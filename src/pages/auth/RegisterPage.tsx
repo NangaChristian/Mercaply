@@ -16,8 +16,8 @@ import { Store, ShoppingBag, ArrowRight, ArrowLeft } from 'lucide-react';
 const baseSchema = z.object({
   email: z.string().email('Email invalide'),
   password: z.string().min(6, 'Le mot de passe doit contenir au moins 6 caractères'),
-  phone: z.string().regex(/^\+237[0-9]{9}$/, 'Format invalide (ex: +237600000000)'),
-  region: z.string().min(1, 'Veuillez sélectionner une région'),
+  firstName: z.string().min(2, 'Le prénom est requis'),
+  lastName: z.string().min(2, 'Le nom est requis'),
 });
 
 const sellerSchema = baseSchema.extend({
@@ -49,7 +49,7 @@ export function RegisterPage() {
   });
 
   const handleNextStep = async () => {
-    const isStep1Valid = await trigger(['email', 'password', 'phone', 'region'] as any);
+    const isStep1Valid = await trigger(['email', 'password', 'firstName', 'lastName'] as any);
     if (isStep1Valid) {
       setStep(2);
     }
@@ -87,6 +87,13 @@ export function RegisterPage() {
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
+        options: {
+          data: {
+            first_name: data.firstName,
+            last_name: data.lastName,
+            role: role,
+          },
+        },
       });
 
       if (authError) throw authError;
@@ -94,19 +101,13 @@ export function RegisterPage() {
 
       const userId = authData.user.id;
 
-      // 2. Create user profile
+      // 2. Update profile with role (the trigger should have created it)
       const { error: profileError } = await supabase
         .from('profiles')
-        .insert([
-          {
-            id: userId,
-            email: data.email,
-            phone: data.phone,
-            role: role,
-            region: data.region,
-            is_verified: false,
-          },
-        ]);
+        .update({
+          role: role,
+        })
+        .eq('id', userId);
 
       if (profileError) throw profileError;
 
@@ -116,15 +117,9 @@ export function RegisterPage() {
           .from('stores')
           .insert([
             {
-              owner_id: userId,
+              id: userId,
               name: data.storeName,
               description: data.storeDescription,
-              region: data.region,
-              cni_number: data.cniNumber,
-              rating: 0,
-              total_sales: 0,
-              is_verified: false,
-              categories: [data.storeCategory],
             },
           ]);
 
@@ -232,23 +227,20 @@ export function RegisterPage() {
                   error={errors.password?.message}
                   {...register('password')}
                 />
-                <Input
-                  label="Téléphone"
-                  type="tel"
-                  placeholder="+237600000000"
-                  error={errors.phone?.message}
-                  {...register('phone')}
-                />
-                <Select
-                  label="Région"
-                  error={errors.region?.message}
-                  {...register('region')}
-                >
-                  <option value="">Sélectionnez une région</option>
-                  {CAMEROON_REGIONS.map((r) => (
-                    <option key={r.id} value={r.id}>{r.name}</option>
-                  ))}
-                </Select>
+                <div className="grid grid-cols-2 gap-4">
+                  <Input
+                    label="Prénom"
+                    placeholder="Jean"
+                    error={errors.firstName?.message}
+                    {...register('firstName')}
+                  />
+                  <Input
+                    label="Nom"
+                    placeholder="Dupont"
+                    error={errors.lastName?.message}
+                    {...register('lastName')}
+                  />
+                </div>
 
                 {role === 'seller' ? (
                   <Button type="button" className="w-full mt-6" onClick={handleNextStep}>
