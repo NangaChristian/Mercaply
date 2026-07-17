@@ -4,7 +4,10 @@ import { TopProgressBar } from './components/layout/TopProgressBar';
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
+import { CallbackPage } from './pages/auth/CallbackPage';
 
+// Inside your route definitions:
+<Route path="/auth/callback" element={<CallbackPage />} />
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './components/auth/AuthProvider';
 import { MainLayout } from './components/layout/MainLayout';
