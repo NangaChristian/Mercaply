@@ -1,9 +1,10 @@
-import { db, doc, getDoc, updateDoc, setDoc, addDoc, deleteDoc, collection, serverTimestamp } from '../../lib/supabase-compat';
+import { supabase } from '../../lib/supabase';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../store/useAuth';
 import { uploadFile } from '../../utils/uploadFile';
 import { Upload, ShieldCheck, AlertCircle, Clock, FileText, CheckCircle2, Loader2, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { Button } from '../../components/ui/Button';
 
 export function VerificationPage() {
   const { user: user } = useAuth();
@@ -22,13 +23,10 @@ export function VerificationPage() {
     async function loadStatus() {
       if (!user) return;
       try {
-        const docRef = doc(db, 'users', user.uid);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          if (data.verification_status) {
-            setVerificationStatus(data.verification_status);
-          }
+        const { data: authData } = await supabase.auth.getUser();
+        const metadata = authData?.user?.user_metadata || {};
+        if (metadata.verification_status) {
+          setVerificationStatus(metadata.verification_status);
         }
       } catch (err) {
         console.error("Error loading verification status:", err);
@@ -68,10 +66,11 @@ export function VerificationPage() {
         ...(companyDocUrl && { companyDoc: companyDocUrl })
       };
 
-      await updateDoc(doc(db, 'users', user.uid), {
-        verification_documents: docRefs,
-        verification_status: 'pending',
-        updatedAt: serverTimestamp()
+      await supabase.auth.updateUser({
+        data: {
+          verification_documents: docRefs,
+          verification_status: 'pending'
+        }
       });
 
       setVerificationStatus('pending');
@@ -226,17 +225,9 @@ export function VerificationPage() {
           </div>
 
           <div className="pt-8">
-            <button
-              type="submit"
-              disabled={isUploading || !files.cniFront || !files.cniBack}
-              className="w-full bg-accent text-white py-4 rounded-xl font-bold hover:bg-accent-hover transition-colors flex items-center justify-center disabled:opacity-50"
-            >
-              {isUploading ? (
-                <><Loader2 className="animate-spin w-5 h-5 mr-2" /> Traitement en cours...</>
-              ) : (
-                "Soumettre les documents"
-              )}
-            </button>
+            <Button type="submit" className="w-full py-4 text-base" isLoading={isUploading} disabled={!files.cniFront || !files.cniBack} variant="primary">
+              Soumettre les documents
+            </Button>
             <p className="text-xs text-text-tertiary text-center mt-4">
               Vos informations sont cryptées et stockées de manière sécurisée, 
               elles ne seront utilisées que dans le cadre du processus de vérification de sécurité imposé par la loi.

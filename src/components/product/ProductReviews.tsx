@@ -4,6 +4,7 @@ import { Star, MessageCircle, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../store/useAuth';
 import { useReviews, ReviewWithAuthor } from '../../hooks/useReviews';
 import { cn } from '../../utils/cn';
+import { Button } from '../ui/Button';
 import { useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 
@@ -187,13 +188,9 @@ export function ProductReviews({ productId }: ProductReviewsProps) {
                     ></textarea>
                   </div>
                   
-                  <button 
-                    type="submit" 
-                    disabled={isSubmitting || !comment.trim()}
-                    className="bg-black text-white px-6 py-3 rounded-full font-bold text-sm hover:bg-black/90 transition-colors disabled:opacity-50"
-                  >
-                    {isSubmitting ? 'Envoi...' : 'Publier mon avis'}
-                  </button>
+                  <Button type="submit" variant="primary" isLoading={isSubmitting} disabled={!comment.trim()}>
+                    Publier mon avis
+                  </Button>
                 </form>
               )
            ) : (

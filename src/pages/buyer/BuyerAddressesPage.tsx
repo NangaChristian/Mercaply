@@ -5,12 +5,16 @@ import { CAMEROON_REGIONS } from '../../constants';
 import { cn } from '../../utils/cn';
 import { useAuth } from '../../store/useAuth';
 import { supabase } from '../../lib/supabase';
+import { Button } from '../../components/ui/Button';
+import { useToast } from '../../store/useToast';
+import { updateUserAddresses } from '../../lib/profileUtils';
 
 // Initial empty state
 const initialAddresses: any[] = [];
 
 export function BuyerAddressesPage() {
   const { user } = useAuth();
+  const { addToast } = useToast();
   const [addresses, setAddresses] = useState<any[]>(initialAddresses);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -31,10 +35,10 @@ export function BuyerAddressesPage() {
     async function loadAddresses() {
       if (!user) return;
       try {
-        
-        const { data } = await supabase.from('profiles').select('addresses').eq('id', user.uid).single();
-        if (data && data.addresses) {
-          setAddresses(data.addresses);
+        const { data: authData } = await supabase.auth.getUser();
+        const metadata = authData?.user?.user_metadata || {};
+        if (metadata.addresses) {
+          setAddresses(metadata.addresses);
         }
       } catch (err) {
         console.error("Error loading addresses:", err);
@@ -48,12 +52,11 @@ export function BuyerAddressesPage() {
   const saveToFirebase = async (newAddresses: any[]) => {
     if (!user) return;
     try {
-      await updateDoc(doc(db, 'users', user.uid), {
-        addresses: newAddresses
-      });
-    } catch (err) {
+      await updateUserAddresses(user.uid, newAddresses);
+      addToast('success', 'Adresses enregistrées avec succès');
+    } catch (err: any) {
       console.error("Error saving addresses:", err);
-      alert("Erreur lors de la sauvegarde des adresses");
+      addToast('error', err.message || 'Erreur lors de la sauvegarde des adresses');
     }
   };
 
@@ -253,14 +256,9 @@ export function BuyerAddressesPage() {
               >
                 Annuler
               </button>
-              <button 
-                type="submit"
-                disabled={isSaving}
-                className="px-6 py-2.5 bg-accent text-white font-medium rounded-xl hover:bg-accent-hover transition-colors flex items-center disabled:opacity-70"
-              >
-                {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+              <Button type="submit" variant="primary" isLoading={isSaving}>
                 Enregistrer
-              </button>
+              </Button>
             </div>
           </form>
         </div>

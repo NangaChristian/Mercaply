@@ -1,6 +1,6 @@
 import { ButtonHTMLAttributes, forwardRef } from 'react';
 import { cn } from '../../utils/cn';
-import { Spinner } from './Spinner';
+import { Skeleton } from './Skeleton';
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
@@ -28,12 +28,18 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     return (
       <button
         ref={ref}
-        className={cn(baseStyles, variants[variant], sizes[size], className)}
+        className={cn("relative overflow-hidden", baseStyles, variants[variant], sizes[size], className)}
         disabled={disabled || isLoading}
         {...props}
       >
-        {isLoading && <Spinner size="sm" className={cn('mr-2', variant === 'primary' || variant === 'danger' ? 'text-white' : 'text-accent')} />}
-        {children}
+        {isLoading && (
+          <div className="absolute inset-0 flex items-center justify-center z-10">
+            <Skeleton className={cn("h-4 w-1/2 rounded", variant === 'primary' || variant === 'danger' ? "bg-white/30" : "bg-black/10")} />
+          </div>
+        )}
+        <span className={cn("flex items-center justify-center transition-opacity", isLoading ? "opacity-0" : "opacity-100")}>
+          {children}
+        </span>
       </button>
     );
   }

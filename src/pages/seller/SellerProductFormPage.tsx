@@ -136,20 +136,12 @@ export function SellerProductFormPage() {
           </h1>
         </div>
         <div className="flex gap-3">
-          <button 
-            onClick={() => handleSave('draft')}
-            className="px-4 py-2 bg-surface border border-border-light text-text-primary font-medium rounded-xl hover:bg-border-light transition-colors flex items-center"
-          >
-            <Save className="h-4 w-4 mr-2" />
-            Brouillon
-          </button>
-          <button 
-            onClick={() => handleSave('active')}
-            className="px-4 py-2 bg-accent text-white font-medium rounded-xl hover:bg-accent-hover transition-colors flex items-center"
-          >
-            <CheckCircle2 className="h-4 w-4 mr-2" />
-            Publier
-          </button>
+          <Button variant="secondary" onClick={() => handleSave('draft')} isLoading={isSaving}>
+            <Save className="h-4 w-4 mr-2" /> Brouillon
+          </Button>
+          <Button variant="primary" onClick={() => handleSave('active')} isLoading={isSaving}>
+            <CheckCircle2 className="h-4 w-4 mr-2" /> Publier
+          </Button>
         </div>
       </div>
 

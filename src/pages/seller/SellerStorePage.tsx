@@ -5,6 +5,7 @@ import { Camera, Save, MapPin, Phone, Mail, Globe, Facebook, Instagram, Twitter,
 import { CAMEROON_REGIONS } from '../../constants';
 import { useAuth } from '../../store/useAuth';
 import { uploadFile } from '../../utils/uploadFile';
+import { Button } from '../../components/ui/Button';
 
 export function SellerStorePage() {
   const { user: user } = useAuth();

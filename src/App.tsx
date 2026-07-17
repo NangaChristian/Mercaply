@@ -4,10 +4,7 @@ import { TopProgressBar } from './components/layout/TopProgressBar';
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
-import { CallbackPage } from './pages/auth/CallbackPage';
 
-// Inside your route definitions:
-<Route path="/auth/callback" element={<CallbackPage />} />
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './components/auth/AuthProvider';
 import { MainLayout } from './components/layout/MainLayout';
@@ -15,6 +12,7 @@ import { BuyerLayout } from './components/layout/BuyerLayout';
 import { HomePage } from './pages/home/HomePage';
 import { LoginPage } from './pages/auth/LoginPage';
 import { RegisterPage } from './pages/auth/RegisterPage';
+import { CallbackPage } from './pages/auth/CallbackPage';
 import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage';
 import { ProductsPage } from './pages/products/ProductsPage';
 import { ProductDetailPage } from './pages/product/ProductDetailPage';
@@ -85,6 +83,7 @@ import { ReportAbusePage } from './pages/info/ReportAbusePage';
 import { CompareModal } from './components/product/CompareModal';
 import { ToastContainer } from './components/ui/Toast';
 import { OrderNotifications } from './components/orders/OrderNotifications';
+import { NetworkStatus } from './components/ui/NetworkStatus';
 import { ScrollToTopButton } from './components/ui/ScrollToTopButton';
 export default function App() {
   return (
@@ -92,6 +91,7 @@ export default function App() {
       <CategoriesProvider>
       <BrowserRouter>
         <TopProgressBar />
+        <NetworkStatus />
         <ToastContainer />
         <CompareModal />
         <OrderNotifications />
@@ -101,6 +101,7 @@ export default function App() {
           <Route path="/auth/login" element={<LoginPage />} />
           <Route path="/auth/register" element={<RegisterPage />} />
           <Route path="/auth/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/auth/callback" element={<CallbackPage />} />
 
           {/* Admin Routes */}
           <Route path="/admin/login" element={<AdminLoginPage />} />
@@ -181,7 +182,6 @@ export default function App() {
             <Route path="orders/:id" element={<BuyerOrderDetailPage />} />
             <Route path="favorites" element={<BuyerFavoritesPage />} />
             <Route path="profile" element={<BuyerProfilePage />} />
-            <Route path="verification" element={<VerificationPage />} />
             <Route path="addresses" element={<BuyerAddressesPage />} />
             <Route path="messages" element={<MessagesPage />} />
             <Route path="notifications" element={<div className="p-8 text-center text-text-secondary">Notifications (Bientôt disponible)</div>} />

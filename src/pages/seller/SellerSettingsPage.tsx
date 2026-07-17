@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Save, Bell, Shield, CreditCard, User, AlertCircle, ShieldCheck, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../store/useAuth';
+import { Button } from '../../components/ui/Button';
 
 export function SellerSettingsPage() {
   const { user: user } = useAuth();
@@ -77,14 +78,9 @@ export function SellerSettingsPage() {
     <div className="space-y-6 pb-20">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-2xl font-bold text-text-primary">Paramètres de la boutique</h1>
-        <button 
-          onClick={handleSave}
-          disabled={isSaving}
-          className="px-6 py-2.5 bg-accent text-white font-medium rounded-xl hover:bg-accent-hover transition-colors flex items-center disabled:opacity-70"
-        >
-          {isSaving ? <Loader2 className="h-5 w-5 mr-2 animate-spin" /> : <Save className="h-5 w-5 mr-2" />}
-          Enregistrer
-        </button>
+        <Button onClick={handleSave} variant="primary" isLoading={isSaving}>
+          <Save className="h-5 w-5 mr-2" /> Enregistrer
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">

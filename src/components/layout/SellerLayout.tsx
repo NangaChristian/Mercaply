@@ -18,7 +18,8 @@ import {
   Bell,
   CheckCircle2,
   AlertTriangle,
-  Briefcase
+  Briefcase,
+  ShieldCheck
 } from 'lucide-react';
 import { useAuth } from '../../store/useAuth';
 import { useProducts } from '../../hooks/useProducts';
@@ -39,6 +40,7 @@ const navigation = [
   { name: 'Statistiques', href: '/seller/stats', icon: BarChart3 },
   { name: 'Finances', href: '/seller/finances', icon: Wallet },
   { name: 'Paramètres', href: '/seller/settings', icon: Settings },
+  { name: 'Vérification', href: '/seller/verification', icon: ShieldCheck },
 ];
 
 export function SellerLayout() {

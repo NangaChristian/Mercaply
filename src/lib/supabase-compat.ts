@@ -1,15 +1,12 @@
 import { supabase } from './supabase';
 
 export const db = {};
-
 export const doc = (db: any, collectionName: string, id: string) => {
     return { collectionName, id };
 };
-
 export const collection = (db: any, collectionName: string) => {
     return collectionName;
 };
-
 export const getDoc = async (docRef: { collectionName: string, id: string }) => {
     if (!supabase) return { exists: () => false, data: () => null };
     let data = null;
@@ -20,7 +17,6 @@ export const getDoc = async (docRef: { collectionName: string, id: string }) => 
         console.error("getDoc error:", e);
     }
     if (data) {
-        // Need to map user id to uid for some cases
         if (docRef.collectionName === 'users' && data.id) {
             data.uid = data.id;
         }
@@ -28,7 +24,6 @@ export const getDoc = async (docRef: { collectionName: string, id: string }) => 
     }
     return { exists: () => false, data: () => null };
 };
-
 export const setDoc = async (docRef: { collectionName: string, id: string }, data: any, options?: any) => {
     if (!supabase) return;
     const finalData = { ...data, id: docRef.id };
@@ -54,7 +49,6 @@ export const setDoc = async (docRef: { collectionName: string, id: string }, dat
         if (error) console.error("setDoc error:", error);
     }
 };
-
 export const updateDoc = async (docRef: { collectionName: string, id: string }, data: any) => {
     if (!supabase) return;
     if (docRef.collectionName === 'users') docRef.collectionName = 'profiles';
@@ -68,7 +62,6 @@ export const updateDoc = async (docRef: { collectionName: string, id: string }, 
     }
     if (error) console.error("updateDoc error:", error);
 };
-
 export const addDoc = async (collectionName: string, data: any) => {
     if (!supabase) return { id: 'temp-id' };
     let res = null, error = null;
@@ -86,7 +79,6 @@ export const addDoc = async (collectionName: string, data: any) => {
     }
     return { id: res?.id || 'temp-id' };
 };
-
 export const deleteDoc = async (docRef: { collectionName: string, id: string }) => {
     if (!supabase) return;
     let error = null;
@@ -99,20 +91,16 @@ export const deleteDoc = async (docRef: { collectionName: string, id: string }) 
     }
     if (error) console.error("deleteDoc error:", error);
 };
-
 export const serverTimestamp = () => new Date().toISOString();
-
 export const query = (...args: any[]) => args;
 export const where = (...args: any[]) => args;
 export const limit = (...args: any[]) => args;
 export const orderBy = (...args: any[]) => args;
 export const onSnapshot = (q: any, cb: any) => { cb({ docs: [] }); return () => {}; };
 export const getDocs = async (q: any) => { return { docs: [], empty: true, size: 0, forEach: () => {} }; };
-
 export const auth = { currentUser: { uid: 'mock-uid' } };
 export const signInWithEmailAndPassword = async (...args: any[]) => ({});
 export const signInWithPopup = async (...args: any[]) => ({});
 export const createUserWithEmailAndPassword = async (...args: any[]) => ({});
 export const sendPasswordResetEmail = async (...args: any[]) => {};
 export const GoogleAuthProvider = class {};
-

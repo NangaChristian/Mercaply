@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { db, doc, getDoc, updateDoc, setDoc, addDoc, deleteDoc, collection, serverTimestamp } from '../../lib/supabase-compat';
+import { supabase } from '../../lib/supabase';
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../store/useAuth';
 import { Camera, ShieldCheck, AlertCircle, Save, Lock, Bell, Loader2 } from 'lucide-react';
@@ -7,13 +7,16 @@ import { CAMEROON_REGIONS } from '../../constants';
 import { cn } from '../../utils/cn';
 import { uploadFile } from '../../utils/uploadFile';
 import { Link } from 'react-router-dom';
+import { Button } from '../../components/ui/Button';
+import { useToast } from '../../store/useToast';
+import { updateUserProfile } from '../../lib/profileUtils';
 
 export function BuyerProfilePage() {
   const { user: user } = useAuth();
+  const { addToast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [verificationStatus, setVerificationStatus] = useState<string>('unverified');
 
   const names = ['User'];
 
@@ -38,23 +41,22 @@ export function BuyerProfilePage() {
     async function loadUserData() {
       if (!user) return;
       try {
-        const docRef = doc(db, 'users', user.uid);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          const data = docSnap.data();
+        const { data: authData } = await supabase.auth.getUser();
+        const metadata = authData?.user?.user_metadata || {};
+
+        const { data } = await supabase.from('profiles').select('*').eq('id', user.uid).single();
+        
+        if (data) {
           setFormData(prev => ({
             ...prev,
-            firstName: data.firstName || prev.firstName,
-            lastName: data.lastName || prev.lastName,
-            phone: data.phone || '',
-            region: data.region || 'lt',
-            avatarUrl: data.photoURL || prev.avatarUrl
+            firstName: data.first_name || metadata.first_name || prev.firstName,
+            lastName: data.last_name || metadata.last_name || prev.lastName,
+            phone: metadata.phone || '',
+            region: metadata.region || 'lt',
+            avatarUrl: data.avatar_url || metadata.avatar_url || prev.avatarUrl
           }));
-          if (data.notifications) {
-            setNotifications(data.notifications);
-          }
-          if (data.verificationStatus) {
-            setVerificationStatus(data.verificationStatus);
+          if (metadata.notifications) {
+            setNotifications(metadata.notifications);
           }
         }
       } catch (error) {
@@ -73,9 +75,14 @@ export function BuyerProfilePage() {
       setIsUploadingAvatar(true);
       const url = await uploadFile(file, `users/${user.uid}/avatar`);
       setFormData({ ...formData, avatarUrl: url });
+      
+      // Update in database immediately
+      await updateUserProfile(user.uid, { avatarUrl: url });
+      
+      addToast('success', 'Avatar mis à jour avec succès');
     } catch (error) {
       console.error('Error uploading avatar:', error);
-      alert('Erreur lors du téléchargement de l\'avatar');
+      addToast('error', 'Erreur lors du téléchargement de l\'avatar');
     } finally {
       setIsUploadingAvatar(false);
       if (avatarInputRef.current) {
@@ -89,19 +96,18 @@ export function BuyerProfilePage() {
     if (!user) return;
     setIsSaving(true);
     try {
-      await updateDoc(doc(db, 'users', user.uid), {
+      await updateUserProfile(user.uid, {
         firstName: formData.firstName,
         lastName: formData.lastName,
         phone: formData.phone,
         region: formData.region,
-        photoURL: formData.avatarUrl,
-        notifications,
-        updatedAt: serverTimestamp()
+        avatarUrl: formData.avatarUrl,
+        notifications
       });
-      alert('Profil mis à jour');
+      addToast('success', 'Profil mis à jour');
     } catch (error) {
       console.error('Error updating profile:', error);
-      alert('Erreur lors de la mise à jour du profil');
+      addToast('error', 'Erreur lors de la mise à jour du profil');
     } finally {
       setIsSaving(false);
     }
@@ -113,39 +119,6 @@ export function BuyerProfilePage() {
         <h1 className="text-2xl font-bold text-text-primary">Mon profil</h1>
         <p className="text-text-secondary mt-1">Gérez vos informations personnelles et vos préférences.</p>
       </div>
-
-      {/* Verification Banner */}
-      {verificationStatus === 'unverified' && (
-        <div className="bg-warning/10 border border-warning/20 rounded-2xl p-4 flex items-start gap-3">
-          <AlertCircle className="h-5 w-5 text-warning flex-shrink-0 mt-0.5" />
-          <div>
-            <h3 className="text-sm font-bold text-warning-dark">Vérifiez votre identité</h3>
-            <p className="text-sm text-warning-dark/80 mt-1">
-              Pour débloquer toutes les fonctionnalités et augmenter votre limite d'achat, veuillez vérifier votre identité en téléchargeant votre CNI.
-            </p>
-            <Link to="/buyer/verification" className="mt-3 inline-block text-sm font-medium text-warning-dark underline hover:text-warning transition-colors">
-              Commencer la vérification
-            </Link>
-          </div>
-        </div>
-      )}
-
-      {verificationStatus === 'pending' && (
-        <div className="bg-accent/10 border border-accent/20 rounded-2xl p-4 flex items-center gap-3">
-          <ShieldCheck className="h-5 w-5 text-accent flex-shrink-0" />
-          <div>
-             <h3 className="text-sm font-bold text-text-primary">Documents en cours d'examen</h3>
-             <p className="text-sm text-text-secondary mt-1">Vos documents sont en cours de validation par notre équipe.</p>
-          </div>
-        </div>
-      )}
-
-      {verificationStatus === 'verified' && (
-        <div className="bg-success/10 border border-success/20 rounded-2xl p-4 flex items-center gap-3">
-          <ShieldCheck className="h-5 w-5 text-success flex-shrink-0" />
-          <span className="text-sm font-bold text-success-dark">Identité vérifiée</span>
-        </div>
-      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {/* Left Column: Avatar & Quick Actions */}
