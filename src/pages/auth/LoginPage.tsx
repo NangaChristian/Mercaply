@@ -9,7 +9,7 @@ import { useToast } from '../../store/useToast';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
-import { Mail, Lock, Eye, EyeOff, Store } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 
 const loginSchema = z.object({
   email: z.string().email('Email invalide'),
@@ -37,30 +37,55 @@ export function LoginPage() {
   });
 
   const onSubmit = async (data: LoginFormValues) => {
+    if (!supabase) {
+      addToast('error', 'Supabase non configuré');
+      return;
+    }
+
     setIsLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, data.email, data.password);
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: data.email,
+        password: data.password,
+      });
+
+      if (authError) throw authError;
+      if (!authData.user) throw new Error('Erreur de connexion');
+
       addToast('success', 'Connexion réussie');
       navigate(from, { replace: true });
     } catch (error: any) {
-      addToast('error', error.message || 'Erreur de connexion');
+      console.error('Login error:', error);
+      
+      // Handle specific error messages
+      if (error.message.includes('Invalid login credentials')) {
+        addToast('error', 'Email ou mot de passe incorrect');
+      } else if (error.message.includes('Email not confirmed')) {
+        addToast('error', 'Veuillez confirmer votre email avant de vous connecter');
+      } else {
+        addToast('error', error.message || 'Erreur de connexion');
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleGoogleLogin = async () => {
-    if (isGoogleLoading) return;
+    if (isGoogleLoading || !supabase) return;
     setIsGoogleLoading(true);
     try {
-      const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+
+      if (error) throw error;
       addToast('success', 'Connexion réussie');
-      navigate(from, { replace: true });
     } catch (error: any) {
-      if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
-        addToast('error', error.message || 'Erreur de connexion Google');
-      }
+      console.error('Google login error:', error);
+      addToast('error', error.message || 'Erreur de connexion Google');
     } finally {
       setIsGoogleLoading(false);
     }
