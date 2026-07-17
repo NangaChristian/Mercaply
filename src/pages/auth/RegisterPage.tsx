@@ -56,74 +56,85 @@ export function RegisterPage() {
   };
 
   const handleGoogleRegister = async () => {
-    if (isGoogleLoading) return;
+    if (isGoogleLoading || !supabase) return;
     setIsGoogleLoading(true);
     try {
-      const provider = new GoogleAuthProvider();
-      const userCredential = await signInWithPopup(auth, provider);
-      const user = userCredential.data.user;
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
 
-      // Check if user already exists in Firestore! Otherwise, we set defaults.
-      // But typically we simply set the generic 'buyer' fields for a Google login user 
-      // if they don't already have role setups.
-      
-      await setDoc(doc(db, 'users', user.uid), {
-        uid: user.uid,
-        email: user.email,
-        phone: user.phoneNumber || '',
-        role: role || 'buyer', // Default to selected role or buyer
-        region: '', // They can complete profile later
-        createdAt: new Date().toISOString(),
-        isVerified: true, // Google auth usually means verified email
-      }, { merge: true });
-
+      if (error) throw error;
       addToast('success', 'Inscription avec Google réussie');
-      navigate('/');
     } catch (error: any) {
-      if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
-        addToast('error', error.message || 'Erreur lors de l\'inscription avec Google');
-      }
+      addToast('error', error.message || 'Erreur lors de l\'inscription avec Google');
     } finally {
       setIsGoogleLoading(false);
     }
   };
 
   const onSubmit = async (data: RegisterFormValues) => {
+    if (!supabase) {
+      addToast('error', 'Supabase non configuré');
+      return;
+    }
+
     setIsLoading(true);
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
-      const user = userCredential.data.user;
-
-      // Create user document
-      await setDoc(doc(db, 'users', user.uid), {
-        uid: user.uid,
+      // 1. Sign up user with Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
         email: data.email,
-        phone: data.phone,
-        role: role,
-        region: data.region,
-        createdAt: new Date().toISOString(),
-        isVerified: false,
+        password: data.password,
       });
 
-      // If seller, create store document
+      if (authError) throw authError;
+      if (!authData.user) throw new Error('Erreur lors de la création de l\'utilisateur');
+
+      const userId = authData.user.id;
+
+      // 2. Create user profile
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert([
+          {
+            id: userId,
+            email: data.email,
+            phone: data.phone,
+            role: role,
+            region: data.region,
+            is_verified: false,
+          },
+        ]);
+
+      if (profileError) throw profileError;
+
+      // 3. If seller, create store
       if (role === 'seller') {
-        const storeId = `store_${user.uid}`;
-        await setDoc(doc(db, 'stores', storeId), {
-          id: storeId,
-          ownerId: user.uid,
-          name: data.storeName,
-          description: data.storeDescription,
-          region: data.region,
-          rating: 0,
-          totalSales: 0,
-          isVerified: false,
-          categories: [data.storeCategory],
-        });
+        const { error: storeError } = await supabase
+          .from('stores')
+          .insert([
+            {
+              owner_id: userId,
+              name: data.storeName,
+              description: data.storeDescription,
+              region: data.region,
+              cni_number: data.cniNumber,
+              rating: 0,
+              total_sales: 0,
+              is_verified: false,
+              categories: [data.storeCategory],
+            },
+          ]);
+
+        if (storeError) throw storeError;
       }
 
-      addToast('success', 'Compte créé avec succès');
-      navigate('/');
+      addToast('success', 'Compte créé avec succès. Vérifiez votre email.');
+      navigate('/auth/login');
     } catch (error: any) {
+      console.error('Registration error:', error);
       addToast('error', error.message || 'Erreur lors de la création du compte');
     } finally {
       setIsLoading(false);
@@ -280,7 +291,7 @@ export function RegisterPage() {
                     Description courte
                   </label>
                   <textarea
-                    className="block w-full rounded-md border-transparent bg-surface text-text-primary placeholder-text-tertiary focus:bg-background focus:border-accent focus:ring-1 focus:ring-accent sm:text-sm transition-all py-2 px-3 min-h-[100px]"
+                    className="block w-full rounded-md border-transparent bg-surface text-text-primary placeholder-text-tertiary focus:bg-background focus:border-accent focus:ring-1 focus:ring-accent transition-colors p-3"
                     placeholder="Décrivez votre activité..."
                     {...register('storeDescription')}
                   />
