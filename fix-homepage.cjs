@@ -1,4 +1,6 @@
+const fs = require('fs');
 
+const code = `
 import { useCategories } from '../../contexts/CategoriesContext';
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
@@ -29,49 +31,16 @@ export function HomePage() {
             const slide = doc;
             let mainImg = slide.image_url;
             let coverImg = '';
-            let objectFit = 'contain';
-            let posX = '50';
-            let posY = '50';
-            let scale = '100';
-            
             if (mainImg && mainImg.includes('|||')) {
-              const parts = mainImg.split('|||');
-              mainImg = parts[0] || '';
-              coverImg = parts[1] || '';
-              objectFit = parts[2] || 'contain';
-              posX = parts[3] || '50';
-              posY = parts[4] || '50';
-              scale = parts[5] || '100';
+              [mainImg, coverImg] = mainImg.split('|||');
             }
-            return { ...slide, id: doc.id, image_url: mainImg, cover_image_url: coverImg, objectFit, posX, posY, scale };
+            return { ...slide, id: doc.id, image_url: mainImg, cover_image_url: coverImg };
           });
           setHeroSlides(parsedSlides);
         }
         
         if (bannersData && bannersData.length > 0) {
-          const now = new Date();
-          const activeBanners = bannersData.filter(banner => {
-            let actualLink = banner.button_link || '';
-            if (actualLink.includes('|||')) {
-              const parts = actualLink.split('|||');
-              actualLink = parts[0];
-              const startDateStr = parts[1];
-              const endDateStr = parts[2];
-              
-              if (startDateStr) {
-                const startDate = new Date(startDateStr);
-                if (now < startDate) return false;
-              }
-              if (endDateStr) {
-                const endDate = new Date(endDateStr);
-                if (now > endDate) return false;
-              }
-              
-              banner.button_link = actualLink;
-            }
-            return true;
-          });
-          setPromoBanners(activeBanners);
+          setPromoBanners(bannersData);
         }
       } catch (error) {
         console.error('Error fetching banners:', error);
@@ -144,7 +113,7 @@ export function HomePage() {
          <div className="relative z-10 text-white">
             {banner.subtitle && <div className="text-accent font-bold tracking-widest uppercase mb-4 text-sm">{banner.subtitle}</div>}
             <h2 className="text-3xl md:text-4xl lg:text-5xl font-extrabold mb-4 tracking-tight whitespace-pre-line">
-              {banner.title ? banner.title.replace(/\\n/g, '\n') : ''}
+              {banner.title ? banner.title.replace(/\\\\n/g, '\\n') : ''}
             </h2>
             {banner.button_text && (
                <Link to={banner.button_link || '#'} className="px-10 py-4 bg-accent text-white font-bold rounded-full shadow-xl hover:-translate-y-0.5 hover:shadow-2xl transition-all inline-block mt-4">
@@ -170,24 +139,16 @@ export function HomePage() {
           )}
           {heroSlides.length > 0 && (
             <>
-              <div className="absolute top-0 right-0 bottom-0 w-1/2 flex items-center justify-center -z-0 overflow-hidden">
+              <div className="absolute top-0 right-0 bottom-0 w-1/2 flex items-center justify-center -z-0">
                 <div className="w-[80%] h-[80%] border border-white/5 rounded-full absolute"></div>
                 <div className="w-[60%] h-[60%] border border-white/5 rounded-full absolute"></div>
                 <div className="w-[40%] h-[40%] border border-white/5 rounded-full absolute"></div>
-                <div className="relative z-10 w-full h-full flex items-center justify-center group">
-                  <img 
-                    src={heroSlides[currentSlideIndex].image_url} 
-                    alt={heroSlides[currentSlideIndex].title}
-                    className="drop-shadow-2xl transition-transform duration-700 group-hover:scale-105" 
-                    style={{
-                      width: `${heroSlides[currentSlideIndex].scale || 100}%`,
-                      height: `${heroSlides[currentSlideIndex].scale || 100}%`,
-                      objectFit: heroSlides[currentSlideIndex].objectFit || 'contain',
-                      objectPosition: `${heroSlides[currentSlideIndex].posX || 50}% ${heroSlides[currentSlideIndex].posY || 50}%`
-                    }}
-                    referrerPolicy="no-referrer"
-                  />
-                </div>
+                <img 
+                  src={heroSlides[currentSlideIndex].image_url} 
+                  alt={heroSlides[currentSlideIndex].title}
+                  className="relative z-10 w-[80%] max-w-[400px] object-contain drop-shadow-2xl hover:scale-105 transition-transform duration-700" 
+                  referrerPolicy="no-referrer"
+                />
               </div>
               <div className="relative z-10 lg:w-[60%] text-white">
                 <div className="flex items-center gap-2 mb-4">
@@ -209,7 +170,7 @@ export function HomePage() {
                     <button 
                       key={idx}
                       onClick={() => setCurrentSlideIndex(idx)}
-                      className={`w-2 h-2 rounded-full ${idx === currentSlideIndex ? 'bg-[#FFC107]' : 'bg-white/30'}`}
+                      className={\`w-2 h-2 rounded-full \${idx === currentSlideIndex ? 'bg-[#FFC107]' : 'bg-white/30'}\`}
                     />
                   ))}
                 </div>
@@ -230,7 +191,7 @@ export function HomePage() {
               </div>
               <div className="relative z-10 p-8 w-2/3">
                  <div className="text-accent font-bold mb-2">{promoBanners[0].subtitle}</div>
-                 <h3 className="text-2xl font-bold mb-4 text-black whitespace-pre-line">{promoBanners[0].title.replace(/\\n/g, '\n')}</h3>
+                 <h3 className="text-2xl font-bold mb-4 text-black whitespace-pre-line">{promoBanners[0].title.replace(/\\\\n/g, '\\n')}</h3>
                  {promoBanners[0].button_text && (
                    <Link to={promoBanners[0].button_link || '#'} className="text-sm font-bold border-b-2 border-accent text-accent pb-1 hover:text-black hover:border-black transition-colors">
                      {promoBanners[0].button_text}
@@ -247,7 +208,7 @@ export function HomePage() {
               </div>
               <div className="relative z-10 p-8 w-2/3">
                  <div className="text-[#FFC107] font-bold mb-2">{promoBanners[1].subtitle}</div>
-                 <h3 className="text-2xl font-bold mb-4 text-white whitespace-pre-line">{promoBanners[1].title.replace(/\\n/g, '\n')}</h3>
+                 <h3 className="text-2xl font-bold mb-4 text-white whitespace-pre-line">{promoBanners[1].title.replace(/\\\\n/g, '\\n')}</h3>
                  {promoBanners[1].button_text && (
                    <Link to={promoBanners[1].button_link || '#'} className="text-sm font-bold border-b-2 border-[#FFC107] text-[#FFC107] pb-1 hover:text-white hover:border-white transition-colors">
                      {promoBanners[1].button_text}
@@ -386,3 +347,6 @@ export function HomePage() {
     </div>
   );
 }
+`;
+
+fs.writeFileSync('src/pages/home/HomePage.tsx', code, 'utf-8');

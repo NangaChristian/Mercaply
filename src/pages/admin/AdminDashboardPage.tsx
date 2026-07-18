@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { useEffect, useState } from 'react';
+import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../store/useAuth';
 import { useUserRole } from '../../hooks/useUserRole';
 import { Card } from '../../components/ui/Card';
@@ -68,15 +69,10 @@ export function AdminDashboardPage() {
   useEffect(() => {
     async function fetchStats() {
       try {
-        const usersSnap = await getDocs(collection(db, 'users'));
-        const storesSnap = await getDocs(collection(db, 'stores'));
-        const productsSnap = await getDocs(collection(db, 'products'));
-        const ordersSnap = await getDocs(collection(db, 'orders'));
-        
-        const usersCount = usersSnap.size;
-        const storesCount = storesSnap.size;
-        const productsCount = productsSnap.size;
-        const ordersCount = ordersSnap.size;
+        const { count: usersCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
+        const { count: storesCount } = await supabase.from('stores').select('*', { count: 'exact', head: true });
+        const { count: productsCount } = await supabase.from('products').select('*', { count: 'exact', head: true });
+        const { count: ordersCount } = await supabase.from('orders').select('*', { count: 'exact', head: true });
         
         let totalRevenue = 0;
         const salesByMonth: Record<string, number> = {

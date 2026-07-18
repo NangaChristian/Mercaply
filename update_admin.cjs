@@ -1,4 +1,6 @@
+const fs = require('fs');
 
+const code = `
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Plus, Edit2, Trash2, Image as ImageIcon, Save, X, GripVertical, Eye, EyeOff, Clock } from 'lucide-react';
@@ -30,10 +32,6 @@ interface HeroSlide {
   button_link: string;
   display_order: number;
   is_active: boolean;
-  objectFit?: string;
-  posX?: string;
-  posY?: string;
-  scale?: string;
 }
 
 interface PromotionalBanner {
@@ -45,50 +43,6 @@ interface PromotionalBanner {
   button_link: string;
   is_active: boolean;
   display_order: number;
-}
-
-
-function SortableSlideRow({ slide, setCurrentSlide, setIsEditing, deleteSlide }: any) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-  } = useSortable({ id: slide.id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
-
-  return (
-    <tr ref={setNodeRef} style={style} className="bg-white group">
-      <td className="px-6 py-4 cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600" {...attributes} {...listeners}>
-        <GripVertical size={20} />
-      </td>
-      <td className="px-6 py-4">
-        <img src={slide.image_url} alt={slide.title} className="h-16 w-16 object-contain bg-gray-900 rounded" />
-      </td>
-      <td className="px-6 py-4">
-        <div className="text-xs text-gray-500">{slide.subtitle}</div>
-        <div className="font-medium">{slide.title}</div>
-      </td>
-      <td className="px-6 py-4">
-        <span className={`px-2 py-1 text-xs rounded-full ${slide.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-          {slide.is_active ? 'Actif' : 'Inactif'}
-        </span>
-      </td>
-      <td className="px-6 py-4 flex gap-2">
-        <button onClick={() => { setCurrentSlide(slide); setIsEditing(true); }} className="text-blue-600 hover:text-blue-800 p-2">
-          <Edit2 size={18} />
-        </button>
-        <button onClick={() => deleteSlide(slide.id)} className="text-red-600 hover:text-red-800 p-2">
-          <Trash2 size={18} />
-        </button>
-      </td>
-    </tr>
-  );
 }
 
 function SortableBannerRow({ banner, setCurrentBanner, setIsEditing, deleteBanner }: any) {
@@ -136,7 +90,7 @@ function SortableBannerRow({ banner, setCurrentBanner, setIsEditing, deleteBanne
         <div className="font-bold text-accent text-sm">CTR: {ctr}%</div>
       </td>
       <td className="px-6 py-4">
-        <span className={`px-2 py-1 text-xs rounded-full ${banner.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+        <span className={\`px-2 py-1 text-xs rounded-full \${banner.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}\`}>
           {banner.is_active ? 'Actif' : 'Inactif'}
         </span>
       </td>
@@ -196,20 +150,10 @@ export function AdminContentPage() {
             const slide = docSnapshot;
             let mainImg = slide.image_url || '';
             let coverImg = '';
-            let objectFit = 'contain';
-            let posX = '50';
-            let posY = '50';
-            let scale = '100';
             if (mainImg && mainImg.includes('|||')) {
-              const parts = mainImg.split('|||');
-              mainImg = parts[0] || '';
-              coverImg = parts[1] || '';
-              objectFit = parts[2] || 'contain';
-              posX = parts[3] || '50';
-              posY = parts[4] || '50';
-              scale = parts[5] || '100';
+              [mainImg, coverImg] = mainImg.split('|||');
             }
-            return { ...slide, id: docSnapshot.id, image_url: mainImg, cover_image_url: coverImg, objectFit, posX, posY, scale };
+            return { ...slide, id: docSnapshot.id, image_url: mainImg, cover_image_url: coverImg };
           });
           setSlides(parsedSlides);
       }
@@ -287,13 +231,10 @@ export function AdminContentPage() {
       if (!supabase) return;
       const isNew = !currentSlide.id;
       let finalImageUrl = currentSlide.image_url || '';
-      const cover = currentSlide.cover_image_url || '';
-      const fit = currentSlide.objectFit || 'contain';
-      const x = currentSlide.posX || '50';
-      const y = currentSlide.posY || '50';
-      const s = currentSlide.scale || '100';
       
-      finalImageUrl = `${finalImageUrl}|||${cover}|||${fit}|||${x}|||${y}|||${s}`;
+      if (currentSlide.cover_image_url) {
+        finalImageUrl = \`\${finalImageUrl}|||\${currentSlide.cover_image_url}\`;
+      }
 
       const slideData = {
         title: currentSlide.title || '',
@@ -332,31 +273,12 @@ export function AdminContentPage() {
     }
   };
 
-  
-  const handleDragEndHero = async (event: any) => {
-    const { active, over } = event;
-    if (!over) return;
-    if (active.id !== over.id) {
-      setSlides((items: HeroSlide[]) => {
-        const oldIndex = items.findIndex((item) => item.id === active.id);
-        const newIndex = items.findIndex((item) => item.id === over.id);
-        const newItems = arrayMove(items, oldIndex, newIndex);
-        if (supabase) {
-          newItems.forEach(async (item, index) => {
-            await supabase.from('hero_slides').update({ display_order: index + 1 }).eq('id', item.id);
-          });
-        }
-        return newItems;
-      });
-    }
-  };
-
   const handleDragEnd = async (event: any) => {
     const { active, over } = event;
     if (!over) return;
 
     if (active.id !== over.id) {
-      setBanners((items: PromotionalBanner[]) => {
+      setBanners((items) => {
         const oldIndex = items.findIndex((item) => item.id === active.id);
         const newIndex = items.findIndex((item) => item.id === over.id);
         const newItems = arrayMove(items, oldIndex, newIndex);
@@ -379,7 +301,7 @@ export function AdminContentPage() {
       
       let finalLink = buttonLink;
       if (isTimedBanner && (startDate || endDate)) {
-        finalLink = `${buttonLink}|||${startDate}|||${endDate}`;
+        finalLink = \`\${buttonLink}|||\${startDate}|||\${endDate}\`;
       }
 
       const bannerData = {
@@ -436,17 +358,17 @@ export function AdminContentPage() {
 
       <div className="flex border-b border-gray-200 mb-6">
         <button
-          className={`py-2 px-6 font-medium text-sm border-b-2 transition-colors ${
+          className={\`py-2 px-6 font-medium text-sm border-b-2 transition-colors \${
             activeTab === 'hero' ? 'border-accent text-accent' : 'border-transparent text-gray-500 hover:text-gray-700'
-          }`}
+          }\`}
           onClick={() => { setActiveTab('hero'); setIsEditing(false); }}
         >
           Slider Principal (Hero)
         </button>
         <button
-          className={`py-2 px-6 font-medium text-sm border-b-2 transition-colors ${
+          className={\`py-2 px-6 font-medium text-sm border-b-2 transition-colors \${
             activeTab === 'banners' ? 'border-accent text-accent' : 'border-transparent text-gray-500 hover:text-gray-700'
-          }`}
+          }\`}
           onClick={() => { setActiveTab('banners'); setIsEditing(false); }}
         >
           Bannières Promotionnelles
@@ -471,32 +393,42 @@ export function AdminContentPage() {
               </button>
               
               <div className="bg-white rounded-xl shadow overflow-hidden">
-                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEndHero}>
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 w-10"></th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Image</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Surtitre & Titre</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Statut</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Image</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Surtitre & Titre</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Statut</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {slides.map((slide) => (
+                      <tr key={slide.id}>
+                        <td className="px-6 py-4">
+                          <img src={slide.image_url} alt={slide.title} className="h-16 w-16 object-contain bg-gray-900 rounded" />
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-xs text-gray-500">{slide.subtitle}</div>
+                          <div className="font-medium">{slide.title}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={\`px-2 py-1 text-xs rounded-full \${slide.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}\`}>
+                            {slide.is_active ? 'Actif' : 'Inactif'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 flex gap-2">
+                          <button onClick={() => { setCurrentSlide(slide); setIsEditing(true); }} className="text-blue-600 hover:text-blue-800">
+                            <Edit2 size={18} />
+                          </button>
+                          <button onClick={() => deleteSlide(slide.id)} className="text-red-600 hover:text-red-800">
+                            <Trash2 size={18} />
+                          </button>
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      <SortableContext items={slides.map(s => s.id)} strategy={verticalListSortingStrategy}>
-                        {slides.map((slide) => (
-                          <SortableSlideRow 
-                            key={slide.id} 
-                            slide={slide} 
-                            setCurrentSlide={setCurrentSlide} 
-                            setIsEditing={setIsEditing} 
-                            deleteSlide={deleteSlide} 
-                          />
-                        ))}
-                      </SortableContext>
-                    </tbody>
-                  </table>
-                </DndContext>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </>
           ) : (
@@ -550,56 +482,6 @@ export function AdminContentPage() {
                     </label>
                   </div>
                   {currentSlide.cover_image_url && <img src={currentSlide.cover_image_url} alt="Cover Preview" className="mt-2 h-32 rounded object-cover" />}
-                </div>
-
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 border border-gray-200 rounded-lg bg-gray-50">
-                  <div className="col-span-2 md:col-span-4 mb-2">
-                    <h3 className="font-semibold text-sm text-gray-700">Paramètres de l'image (Produit/Principale)</h3>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Ajustement</label>
-                    <select 
-                      value={currentSlide.objectFit || 'contain'} 
-                      onChange={(e) => setCurrentSlide({...currentSlide, objectFit: e.target.value})}
-                      className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm"
-                    >
-                      <option value="contain">Contenir (Contain)</option>
-                      <option value="cover">Couvrir (Cover)</option>
-                      <option value="fill">Remplir (Fill)</option>
-                      <option value="none">Aucun (None)</option>
-                      <option value="scale-down">Réduire (Scale-down)</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Taille / Zoom (%)</label>
-                    <input 
-                      type="number" 
-                      min="10" max="300"
-                      value={currentSlide.scale || '100'} 
-                      onChange={(e) => setCurrentSlide({...currentSlide, scale: e.target.value})}
-                      className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Position X (%)</label>
-                    <input 
-                      type="number" 
-                      min="0" max="100"
-                      value={currentSlide.posX || '50'} 
-                      onChange={(e) => setCurrentSlide({...currentSlide, posX: e.target.value})}
-                      className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Position Y (%)</label>
-                    <input 
-                      type="number" 
-                      min="0" max="100"
-                      value={currentSlide.posY || '50'} 
-                      onChange={(e) => setCurrentSlide({...currentSlide, posY: e.target.value})}
-                      className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm"
-                    />
-                  </div>
                 </div>
 
                 <div>
@@ -891,7 +773,7 @@ export function AdminContentPage() {
                      <div className="relative z-10 text-white">
                         {currentBanner.subtitle && <div className="text-accent font-bold tracking-widest uppercase mb-4 text-sm">{currentBanner.subtitle}</div>}
                         <h2 className="text-3xl md:text-4xl lg:text-5xl font-extrabold mb-4 tracking-tight whitespace-pre-line">
-                          {currentBanner.title ? currentBanner.title.replace(/\\n/g, '\n') : 'Découvrez Notre Nouvelle\nCollection'}
+                          {currentBanner.title ? currentBanner.title.replace(/\\\\n/g, '\\n') : 'Découvrez Notre Nouvelle\\nCollection'}
                         </h2>
                         {currentBanner.button_text && (
                            <span className="px-10 py-4 bg-accent text-white font-bold rounded-full shadow-xl inline-block mt-4 cursor-default">
@@ -909,3 +791,6 @@ export function AdminContentPage() {
     </div>
   );
 }
+`;
+
+fs.writeFileSync('src/pages/admin/AdminContentPage.tsx', code, 'utf-8');

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
@@ -9,13 +9,34 @@ import { AdminShippingZones } from '../../components/admin/AdminShippingZones';
 export function AdminSettingsPage() {
   const { addToast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [settings, setSettings] = useState({
+    platformName: 'Mercaply',
+    contactEmail: 'admin@mercaply.com',
+    stripeKey: 'sk_test_123456789'
+  });
+
+  useEffect(() => {
+    const saved = localStorage.getItem('admin_platform_settings');
+    if (saved) {
+      try {
+        setSettings(JSON.parse(saved));
+      } catch (e) {
+        console.error('Failed to parse settings');
+      }
+    }
+  }, []);
 
   const handleSave = () => {
     setIsLoading(true);
     setTimeout(() => {
+      localStorage.setItem('admin_platform_settings', JSON.stringify(settings));
       setIsLoading(false);
       addToast('success', 'Paramètres enregistrés avec succès');
-    }, 1000);
+    }, 800);
+  };
+
+  const handleChange = (key: string, value: string) => {
+    setSettings(prev => ({ ...prev, [key]: value }));
   };
 
   return (
@@ -37,11 +58,13 @@ export function AdminSettingsPage() {
           <div className="space-y-4">
             <Input 
               label="Nom de la plateforme" 
-              defaultValue="Mercaply" 
+              value={settings.platformName}
+              onChange={(e) => handleChange('platformName', e.target.value)}
             />
             <Input 
               label="Email de contact principal" 
-              defaultValue="admin@mercaply.com" 
+              value={settings.contactEmail}
+              onChange={(e) => handleChange('contactEmail', e.target.value)}
             />
           </div>
         </Card>
@@ -78,10 +101,11 @@ export function AdminSettingsPage() {
           
           <div className="space-y-4">
              <Input 
-              label="Clé Stripe (Paiements)" 
-              type="password"
-              defaultValue="sk_test_123456789" 
-            />
+               label="Clé Stripe (Paiements)" 
+               type="password"
+               value={settings.stripeKey}
+               onChange={(e) => handleChange('stripeKey', e.target.value)}
+             />
           </div>
         </Card>
 

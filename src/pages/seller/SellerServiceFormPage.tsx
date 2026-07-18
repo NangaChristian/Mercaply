@@ -1,3 +1,4 @@
+import { Button } from '../../components/ui/Button';
 import { db, doc, getDoc, updateDoc, setDoc, addDoc, deleteDoc, collection, serverTimestamp } from '../../lib/supabase-compat';
 import { useCategories } from '../../contexts/CategoriesContext';
 import React, { useState, useEffect } from 'react';

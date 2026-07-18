@@ -61,6 +61,7 @@ import { AdminSystemLogsPage } from './pages/admin/AdminSystemLogsPage';
 import { AdminContentPage } from './pages/admin/AdminContentPage';
 import { AdminCategoriesPage } from './pages/admin/AdminCategoriesPage';
 import { ProtectedAdminRoute } from './components/auth/ProtectedAdminRoute';
+import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { AdminLayout } from './components/layout/AdminLayout';
 
 // Messages
@@ -129,7 +130,7 @@ export default function App() {
           <Route path="/checkout/success" element={<CheckoutSuccessPage />} />
 
           {/* Seller Routes */}
-          <Route path="/seller" element={<SellerLayout />}>
+          <Route element={<ProtectedRoute allowedRoles={['seller', 'admin']} />}><Route path="/seller" element={<SellerLayout />}>
             <Route path="dashboard" element={<SellerDashboardPage />} />
             <Route path="products" element={<SellerProductsPage />} />
             <Route path="products/new" element={<SellerProductFormPage />} />
@@ -145,7 +146,7 @@ export default function App() {
             <Route path="verification" element={<VerificationPage />} />
             <Route path="messages" element={<MessagesPage />} />
           </Route>
-
+          </Route>
           {/* Main App Routes */}
           <Route path="/" element={<MainLayout />}>
             <Route index element={<HomePage />} />
@@ -175,7 +176,7 @@ export default function App() {
           </Route>
 
           {/* Buyer Dashboard Routes */}
-          <Route path="/buyer" element={<BuyerLayout />}>
+          <Route element={<ProtectedRoute />}><Route path="/buyer" element={<BuyerLayout />}>
             <Route index element={<Navigate to="/buyer/dashboard" replace />} />
             <Route path="dashboard" element={<BuyerDashboardPage />} />
             <Route path="orders" element={<BuyerOrdersPage />} />
@@ -185,7 +186,7 @@ export default function App() {
             <Route path="addresses" element={<BuyerAddressesPage />} />
             <Route path="messages" element={<MessagesPage />} />
             <Route path="notifications" element={<div className="p-8 text-center text-text-secondary">Notifications (Bientôt disponible)</div>} />
-          </Route>
+          </Route></Route>
         </Routes>
       </BrowserRouter>
     </CategoriesProvider>

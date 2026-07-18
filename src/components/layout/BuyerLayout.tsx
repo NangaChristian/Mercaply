@@ -28,7 +28,7 @@ const navItems = [
   { name: 'Mes favoris', path: '/buyer/favorites', icon: Heart },
   { name: 'Messages', path: '/buyer/messages', icon: MessageSquare },
   { name: 'Mes adresses', path: '/buyer/addresses', icon: MapPin },
-  { name: 'Mon profil', path: '/buyer/profile', icon: User },
+  { name: 'Mon compte', path: '/buyer/profile', icon: User },
   { name: 'Notifications', path: '/buyer/notifications', icon: Bell },
 ];
 

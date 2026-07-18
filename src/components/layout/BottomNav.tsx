@@ -2,8 +2,11 @@ import { Link, useLocation } from 'react-router-dom';
 import { Home, Grid, Search, Heart, User, LayoutDashboard, Package, ShoppingCart } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { useUI } from '../../store/useUI';
+import { useAuth } from '../../store/useAuth';
 
 export function BottomNav() {
+  const { user } = useAuth();
+  const accountPath = user ? (user.role === 'admin' ? '/admin/dashboard' : user.role === 'seller' ? '/seller/dashboard' : '/buyer/dashboard') : '/auth/login';
   const location = useLocation();
   const { setIsSearchOpen } = useUI();
 
@@ -14,14 +17,14 @@ export function BottomNav() {
     { icon: Grid, label: 'Catégories', path: '/products' },
     { icon: Search, label: 'Recherche', action: () => setIsSearchOpen(true) },
     { icon: Heart, label: 'Favoris', path: '/buyer/favorites' },
-    { icon: User, label: 'Profil', path: '/buyer/profile' },
+    { icon: User, label: 'Mon compte', path: accountPath },
   ];
 
   const sellerNavItems = [
     { icon: LayoutDashboard, label: 'Tableau de bord', path: '/seller/dashboard' },
     { icon: Package, label: 'Mes produits', path: '/seller/products' },
     { icon: ShoppingCart, label: 'Commandes', path: '/seller/orders' },
-    { icon: User, label: 'Paramètres', path: '/seller/settings' },
+    { icon: User, label: 'Mon compte', path: accountPath },
   ];
 
   const navItems = isSellerRoute ? sellerNavItems : buyerNavItems;

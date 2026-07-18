@@ -24,11 +24,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .eq('id', session.user.id)
             .single();
 
+          const metaRole = session.user?.user_metadata?.role;
           if (profile) {
             setUser({
               uid: session.user.id,
               email: session.user.email || '',
-              role: profile.role || 'buyer',
+              role: profile.role || metaRole || 'buyer',
               createdAt: profile.created_at || new Date().toISOString(),
               isVerified: profile.is_verified || false,
             } as AppUser);
@@ -36,7 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setUser({
               uid: session.user.id,
               email: session.user.email || '',
-              role: 'buyer',
+              role: metaRole || 'buyer',
               createdAt: new Date().toISOString(),
               isVerified: false,
             } as AppUser);
@@ -63,11 +64,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .eq('id', session.user.id)
             .single();
 
+          const metaRole = session.user?.user_metadata?.role;
           if (profile) {
             setUser({
               uid: session.user.id,
               email: session.user.email || '',
-              role: profile.role || 'buyer',
+              role: profile.role || metaRole || 'buyer',
               createdAt: profile.created_at || new Date().toISOString(),
               isVerified: profile.is_verified || false,
             } as AppUser);
@@ -75,7 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setUser({
               uid: session.user.id,
               email: session.user.email || '',
-              role: 'buyer',
+              role: metaRole || 'buyer',
               createdAt: new Date().toISOString(),
               isVerified: false,
             } as AppUser);

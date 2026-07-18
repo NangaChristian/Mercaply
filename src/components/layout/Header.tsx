@@ -62,12 +62,11 @@ export function Header() {
         let items: any[] = [];
         const term = inlineQuery.trim().toLowerCase();
         
-        // Since firestore doesn't do ilike natively well, we'll fetch some products and filter locally for a quick inline search
-        const productsSnap = await getDocs(query(collection(db, 'products'), limit(50)));
-        const servicesSnap = await getDocs(query(collection(db, 'services'), limit(50)));
+        const { data: allProductsData } = await supabase.from('products').select('*').limit(50);
+        const { data: allServicesData } = await supabase.from('services').select('*').limit(50);
         
-        const allProducts = productsSnap.docs.map(d => ({ id: d.id, ...(d.data() as any), type: 'product' }));
-        const allServices = servicesSnap.docs.map(d => ({ id: d.id, ...(d.data() as any), type: 'service' }));
+        const allProducts = (allProductsData || []).map(d => ({ ...d, type: 'product' }));
+        const allServices = (allServicesData || []).map(d => ({ ...d, type: 'service' }));
         
         const combined = [...allProducts, ...allServices];
         const filtered = combined.filter(item => 
@@ -315,7 +314,7 @@ export function Header() {
                          <MapPin className="h-4 w-4 mr-3 text-text-tertiary" /> Mes adresses
                        </Link>
                        <Link to="/buyer/profile" className="flex items-center px-4 py-2.5 text-sm font-medium text-text-secondary hover:bg-surface hover:text-black transition-colors">
-                         <User className="h-4 w-4 mr-3 text-text-tertiary" /> Mon profil
+                         <User className="h-4 w-4 mr-3 text-text-tertiary" /> Mon compte
                        </Link>
                        <Link to="/buyer/notifications" className="flex items-center px-4 py-2.5 text-sm font-medium text-text-secondary hover:bg-surface hover:text-black transition-colors">
                          <Bell className="h-4 w-4 mr-3 text-text-tertiary" /> Notifications
