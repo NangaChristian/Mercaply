@@ -5,6 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
 import adminRoutes from "./server/routes/admin.js";
 import paymentRoutes from "./server/routes/payments.js";
+import orderRoutes from "./server/routes/orders.js";
 
 dotenv.config();
 
@@ -38,6 +39,7 @@ async function startServer() {
   app.use("/api/admin", adminRoutes);
   app.use("/api/payments", paymentRoutes);
   app.use("/api/fapshi", paymentRoutes);
+  app.use("/api/orders", orderRoutes);
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok", supabase: !!supabase });
   });

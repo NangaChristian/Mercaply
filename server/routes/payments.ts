@@ -1,20 +1,28 @@
 import { Router } from "express";
 import { supabaseAdmin } from "../supabase.js";
+import { getConfig } from "../services/config.js";
+import { sendOrderConfirmationEmail } from "../services/email.js";
 
 const router = Router();
 
-const FAPSHI_USER_ID = "6f070d12-7da5-4ab3-bdf5-a4791b23b40b";
-const FAPSHI_API_KEY = "FAK_TEST_24e41d7670ee91e036fa";
-const FAPSHI_BASE_URL = "https://sandbox.fapshi.com";
-
 // Helper for Fapshi Requests
+async function getFapshiConfig() {
+  const config = getConfig();
+  const fapshiInt = config.integrations.find((i: any) => i.id === 'fapshi');
+  if (!fapshiInt || !fapshiInt.isActive) {
+    throw new Error('Fapshi integration is disabled or not configured');
+  }
+  return fapshiInt.config;
+}
+
 async function fapshiRequest(endpoint: string, data: any) {
-  const response = await fetch(`${FAPSHI_BASE_URL}${endpoint}`, {
+  const fapshiConfig = await getFapshiConfig();
+  const response = await fetch(`${fapshiConfig.baseUrl}${endpoint}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "apiuser": FAPSHI_USER_ID,
-      "apikey": FAPSHI_API_KEY,
+      "apiuser": fapshiConfig.apiUser,
+      "apikey": fapshiConfig.apiKey,
     },
     body: JSON.stringify(data),
   });
@@ -22,14 +30,16 @@ async function fapshiRequest(endpoint: string, data: any) {
 }
 
 async function fapshiGet(endpoint: string) {
-  const response = await fetch(`${FAPSHI_BASE_URL}${endpoint}`, {
+  const fapshiConfig = await getFapshiConfig();
+  const response = await fetch(`${fapshiConfig.baseUrl}${endpoint}`, {
     headers: {
-      "apiuser": FAPSHI_USER_ID,
-      "apikey": FAPSHI_API_KEY,
+      "apiuser": fapshiConfig.apiUser,
+      "apikey": fapshiConfig.apiKey,
     },
   });
   return response.json();
 }
+
 
 router.post("/checkout", async (req, res) => {
   if (!supabaseAdmin) return res.status(500).json({ error: "Supabase not configured" });
@@ -41,8 +51,8 @@ router.post("/checkout", async (req, res) => {
 
   try {
     // 1. Get commission
-    const { data: settings } = await supabaseAdmin.from('admin_settings').select('commission_percentage').eq('id', 1).single();
-    const commPercent = settings?.commission_percentage || 5.0;
+    const config = getConfig();
+    const commPercent = config.commission_percentage || 5.0;
     
     const commission_amount = amount * (commPercent / 100);
     const seller_earnings = amount - commission_amount;
@@ -100,6 +110,12 @@ router.post("/webhook", async (req, res) => {
       if (order && order.payment_status !== 'paid') {
         // Update order
         await supabaseAdmin.from('orders').update({ payment_status: 'paid', status: 'processing' }).eq('id', externalId);
+        
+        // Send order confirmation email
+        const { data: buyer } = await supabaseAdmin.from('profiles').select('email, first_name').eq('id', order.buyer_id).single();
+        if (buyer && buyer.email) {
+          await sendOrderConfirmationEmail(buyer.email, buyer.first_name, order);
+        }
         
         // In a complete implementation, credit seller wallet here if using a wallet table
         // Example: await supabaseAdmin.rpc('increment_seller_wallet', { seller: order.seller_id, amount: order.seller_earnings })

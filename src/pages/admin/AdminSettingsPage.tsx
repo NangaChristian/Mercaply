@@ -6,6 +6,7 @@ import { useToast } from '../../store/useToast';
 import { Settings, ShieldAlert, Key, Percent } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { AdminShippingZones } from '../../components/admin/AdminShippingZones';
+import { AdminIntegrations } from '../../components/admin/AdminIntegrations';
 
 export function AdminSettingsPage() {
   const { addToast } = useToast();
@@ -156,21 +157,7 @@ export function AdminSettingsPage() {
           </div>
         </Card>
 
-        <Card className="p-6">
-          <div className="flex items-center gap-3 mb-6">
-            <Key className="h-6 w-6 text-blue-500" />
-            <h2 className="text-lg font-bold text-text-primary">Clés API & Intégrations</h2>
-          </div>
-          
-          <div className="space-y-4">
-             <Input 
-               label="Clé Stripe (Paiements)" 
-               type="password"
-               value={settings.stripeKey}
-               onChange={(e) => handleChange('stripeKey', e.target.value)}
-             />
-          </div>
-        </Card>
+        <AdminIntegrations />
 
         <div className="flex justify-end">
           <Button onClick={handleSave} isLoading={isLoading}>

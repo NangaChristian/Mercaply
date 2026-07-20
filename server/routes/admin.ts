@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { supabaseAdmin } from "../supabase.js";
+import { getConfig, saveConfig } from "../services/config.js";
 
 const router = Router();
 
@@ -90,20 +91,34 @@ router.delete("/users/:id", async (req, res) => {
   res.json({ success: true });
 });
 
-// Settings (commission)
+// Settings (commission and integrations)
 router.get("/settings", async (req, res) => {
-  if (!supabaseAdmin) return res.status(500).json({ error: "Supabase not configured" });
-  const { data, error } = await supabaseAdmin.from('admin_settings').select('*').eq('id', 1).single();
-  if (error) return res.status(500).json({ error: error.message });
-  res.json(data);
+  const config = getConfig();
+  res.json(config);
 });
 
 router.put("/settings", async (req, res) => {
-  if (!supabaseAdmin) return res.status(500).json({ error: "Supabase not configured" });
-  const { commission_percentage } = req.body;
-  const { error } = await supabaseAdmin.from('admin_settings').update({ commission_percentage }).eq('id', 1);
-  if (error) return res.status(500).json({ error: error.message });
-  res.json({ success: true });
+  const currentConfig = getConfig();
+  const newConfig = { ...currentConfig, ...req.body };
+  saveConfig(newConfig);
+  res.json({ success: true, config: newConfig });
+});
+
+router.put("/integrations/:id", async (req, res) => {
+  const currentConfig = getConfig();
+  const integrationId = req.params.id;
+  
+  const integrations = currentConfig.integrations.map(int => {
+    if (int.id === integrationId) {
+      return { ...int, ...req.body };
+    }
+    return int;
+  });
+  
+  // If it's a new integration that doesn't exist, we could add it, but for now we only support the built-in ones.
+  const newConfig = { ...currentConfig, integrations };
+  saveConfig(newConfig);
+  res.json({ success: true, integration: integrations.find(i => i.id === integrationId) });
 });
 
 export default router;

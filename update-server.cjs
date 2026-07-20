@@ -1,16 +1,16 @@
 const fs = require('fs');
 let content = fs.readFileSync('server.ts', 'utf-8');
 
-const imports = `import adminRoutes from "./server/routes/admin.js";
-import paymentRoutes from "./server/routes/payments.js";`;
+// Add import
+content = content.replace('import paymentRoutes from "./server/routes/payments.js";', 'import paymentRoutes from "./server/routes/payments.js";\nimport orderRoutes from "./server/routes/orders.js";');
 
-content = content.replace('import dotenv from "dotenv";', `import dotenv from "dotenv";\n${imports}`);
-
+// Mount route
 const routes = `  // API routes FIRST
   app.use("/api/admin", adminRoutes);
   app.use("/api/payments", paymentRoutes);
-  app.use("/api/fapshi", paymentRoutes);`;
+  app.use("/api/fapshi", paymentRoutes);
+  app.use("/api/orders", orderRoutes);`;
 
-content = content.replace('  // API routes FIRST', routes);
+content = content.replace(/  \/\/ API routes FIRST[\s\S]*?app\.use\("\/api\/fapshi", paymentRoutes\);/, routes);
 
 fs.writeFileSync('server.ts', content);
