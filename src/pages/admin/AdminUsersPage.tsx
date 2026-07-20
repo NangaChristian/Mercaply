@@ -3,7 +3,8 @@ import { supabase } from '../../lib/supabase';
 import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
-import { Search, MoreVertical, Shield, User as UserIcon, Store, FileText, CheckCircle, XCircle } from 'lucide-react';
+import { Search, MoreVertical, Shield, User as UserIcon, Store, FileText, CheckCircle, XCircle, Ban, Power, Trash2, Edit } from 'lucide-react';
+import { useToast } from '../../store/useToast';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -15,6 +16,9 @@ interface Profile {
   created_at: string;
   verification_status?: string;
   verification_documents?: any;
+  email?: string;
+  status?: string;
+  is_banned?: boolean;
 }
 
 export function AdminUsersPage() {
@@ -22,6 +26,8 @@ export function AdminUsersPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
+  const [showActionsMenu, setShowActionsMenu] = useState<string | null>(null);
+  const { addToast } = useToast();
 
   useEffect(() => {
     fetchUsers();
@@ -30,19 +36,43 @@ export function AdminUsersPage() {
   async function fetchUsers() {
     if (!supabase) return;
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      if (data) setUsers(data);
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch('/api/admin/users', {
+        headers: { 'Authorization': `Bearer ${session?.access_token}` }
+      });
+      if (!response.ok) throw new Error('Failed to fetch users');
+      const data = await response.json();
+      setUsers(data);
     } catch (error) {
       console.error('Error fetching users:', error);
+      // Fallback
+      const { data } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
+      if (data) setUsers(data);
     } finally {
       setIsLoading(false);
     }
   }
+
+  
+  const handleAction = async (userId: string, action: string, value: any) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch(`/api/admin/users/${userId}/${action}`, {
+        method: action === 'delete' ? 'DELETE' : 'PATCH',
+        headers: { 
+          'Authorization': `Bearer ${session?.access_token}`,
+          'Content-Type': 'application/json'
+        },
+        body: action !== 'delete' ? JSON.stringify(value) : undefined
+      });
+      if (!response.ok) throw new Error('Action failed');
+      addToast('success', 'Opération réussie');
+      fetchUsers();
+    } catch (err: any) {
+      addToast('error', err.message);
+    }
+    setShowActionsMenu(null);
+  };
 
   const handleKycAction = async (userId: string, status: 'verified' | 'rejected') => {
     try {
@@ -118,6 +148,7 @@ export function AdminUsersPage() {
               <tr className="bg-surface-hover border-b border-border-light">
                 <th className="p-4 font-medium text-text-secondary text-sm">Utilisateur</th>
                 <th className="p-4 font-medium text-text-secondary text-sm">Rôle</th>
+<th className="p-4 font-medium text-text-secondary text-sm">Compte</th>
                 <th className="p-4 font-medium text-text-secondary text-sm">Statut KYC</th>
                 <th className="p-4 font-medium text-text-secondary text-sm">Inscription</th>
                 <th className="p-4 font-medium text-text-secondary text-sm text-right">Actions</th>
@@ -148,12 +179,21 @@ export function AdminUsersPage() {
                           <p className="font-medium text-text-primary">
                             {user.first_name || 'Utilisateur'} {user.last_name || ''}
                           </p>
-                          <p className="text-xs text-text-secondary">{user.id.substring(0, 8)}...</p>
+                          <p className="text-xs text-text-secondary">{user.email || user.id.substring(0, 8)}</p>
                         </div>
                       </div>
                     </td>
                     <td className="p-4">
                       {getRoleBadge(user.role)}
+                    </td>
+                    <td className="p-4">
+                      {user.is_banned ? (
+                        <span className="px-2 py-1 bg-danger/10 text-danger rounded-md text-xs font-medium">Banni</span>
+                      ) : user.status === 'disabled' ? (
+                        <span className="px-2 py-1 bg-warning/10 text-warning-dark rounded-md text-xs font-medium">Désactivé</span>
+                      ) : (
+                        <span className="px-2 py-1 bg-success/10 text-success rounded-md text-xs font-medium">Actif</span>
+                      )}
                     </td>
                     <td className="p-4">
                       {getKycBadge(user.verification_status)}
@@ -167,9 +207,27 @@ export function AdminUsersPage() {
                           Examiner KYC
                         </Button>
                       )}
-                      <Button variant="ghost" size="sm" className="p-2">
-                        <MoreVertical className="h-5 w-5 text-text-secondary" />
-                      </Button>
+                      <div className="relative inline-block">
+                        <Button variant="ghost" size="sm" className="p-2" onClick={() => setShowActionsMenu(showActionsMenu === user.id ? null : user.id)}>
+                          <MoreVertical className="h-5 w-5 text-text-secondary" />
+                        </Button>
+                        {showActionsMenu === user.id && (
+                          <div className="absolute right-0 mt-2 w-48 bg-background border border-border-light rounded-xl shadow-lg z-10 py-1">
+                            <button onClick={() => handleAction(user.id, 'role', { role: user.role === 'seller' ? 'buyer' : 'seller' })} className="w-full text-left px-4 py-2 text-sm hover:bg-surface flex items-center">
+                              <Edit className="h-4 w-4 mr-2" /> Changer rôle ({user.role === 'seller' ? 'Acheteur' : 'Vendeur'})
+                            </button>
+                            <button onClick={() => handleAction(user.id, 'ban', { is_banned: !user.is_banned })} className="w-full text-left px-4 py-2 text-sm hover:bg-surface flex items-center text-warning-dark">
+                              <Ban className="h-4 w-4 mr-2" /> {user.is_banned ? 'Débannir' : 'Bannir'}
+                            </button>
+                            <button onClick={() => handleAction(user.id, 'status', { status: user.status === 'disabled' ? 'active' : 'disabled' })} className="w-full text-left px-4 py-2 text-sm hover:bg-surface flex items-center">
+                              <Power className="h-4 w-4 mr-2" /> {user.status === 'disabled' ? 'Activer' : 'Désactiver'}
+                            </button>
+                            <button onClick={() => { if(confirm('Êtes-vous sûr?')) handleAction(user.id, 'delete', null); }} className="w-full text-left px-4 py-2 text-sm hover:bg-surface flex items-center text-danger">
+                              <Trash2 className="h-4 w-4 mr-2" /> Supprimer
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))

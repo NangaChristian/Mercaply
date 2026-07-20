@@ -74,6 +74,10 @@ export function AdminDashboardPage() {
         const { count: productsCount } = await supabase.from('products').select('*', { count: 'exact', head: true });
         const { count: ordersCount } = await supabase.from('orders').select('*', { count: 'exact', head: true });
         
+        const { data: ordersData } = await supabase.from('orders').select('*');
+        const { data: usersData } = await supabase.from('profiles').select('*');
+        const { data: productsData } = await supabase.from('products').select('category');
+
         let totalRevenue = 0;
         const salesByMonth: Record<string, number> = {
           'Jan': 0, 'Fév': 0, 'Mar': 0, 'Avr': 0, 'Mai': 0, 'Juin': 0, 'Juil': 0, 'Août': 0, 'Sep': 0, 'Oct': 0, 'Nov': 0, 'Déc': 0
@@ -85,13 +89,12 @@ export function AdminDashboardPage() {
 
         const months = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'];
 
-        ordersSnap.forEach(doc => {
-          const data = doc.data();
+        (ordersData || []).forEach(data => {
           if (data.status === 'delivered' || data.status === 'completed') {
              totalRevenue += Number(data.total || data.total_amount || 0);
           }
-          if (data.createdAt) {
-            const date = new Date(data.createdAt);
+          if (data.created_at || data.createdAt) {
+            const date = new Date(data.created_at || data.createdAt);
             if (!isNaN(date.getTime())) {
               const monthStr = months[date.getMonth()];
               if (salesByMonth[monthStr] !== undefined) {
@@ -101,10 +104,9 @@ export function AdminDashboardPage() {
           }
         });
 
-        usersSnap.forEach(doc => {
-          const data = doc.data();
-          if (data.createdAt) {
-            const date = new Date(data.createdAt);
+        (usersData || []).forEach(data => {
+          if (data.created_at || data.createdAt) {
+            const date = new Date(data.created_at || data.createdAt);
             if (!isNaN(date.getTime())) {
               const monthStr = months[date.getMonth()];
               if (usersByMonth[monthStr] !== undefined) {
@@ -114,17 +116,16 @@ export function AdminDashboardPage() {
           }
         });
 
-        productsSnap.forEach(doc => {
-          const data = doc.data();
+        (productsData || []).forEach(data => {
           const cat = data.category || 'Non classé';
           catCounts[cat] = (catCounts[cat] || 0) + 1;
         });
 
         setStats({
-          usersCount,
-          storesCount,
-          productsCount,
-          ordersCount,
+          usersCount: usersCount || 0,
+          storesCount: storesCount || 0,
+          productsCount: productsCount || 0,
+          ordersCount: ordersCount || 0,
           totalRevenue,
         });
 

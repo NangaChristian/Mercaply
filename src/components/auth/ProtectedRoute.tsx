@@ -9,7 +9,7 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
-  const { user, firebaseUser, isLoading } = useAuth();
+  const { user, supabaseUser, isLoading } = useAuth();
   const location = useLocation();
 
   if (isLoading) {
@@ -20,7 +20,7 @@ export function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
     );
   }
 
-  if (!firebaseUser || !user) {
+  if (!supabaseUser || !user) {
     return <Navigate to="/auth/login" state={{ from: location }} replace />;
   }
 

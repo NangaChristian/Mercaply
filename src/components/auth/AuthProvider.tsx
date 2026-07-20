@@ -25,11 +25,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .single();
 
           const metaRole = session.user?.user_metadata?.role;
+          let finalRole = profile?.role || metaRole || 'buyer';
+          
+          if (metaRole === 'seller' && profile?.role !== 'seller') {
+            // Fix conflict: update profile role to seller since trigger defaulted to buyer
+            const { error: pErr } = await supabase.from('profiles').update({ role: 'seller' }).eq('id', session.user.id);
+            if (!pErr) finalRole = 'seller';
+            
+            const storeName = session.user?.user_metadata?.store_name;
+            if (storeName) {
+              const { data: store } = await supabase.from('stores').select('id').eq('id', session.user.id).single();
+              if (!store) {
+                await supabase.from('stores').insert([{
+                  id: session.user.id,
+                  name: storeName,
+                  description: session.user?.user_metadata?.store_description
+                }]);
+              }
+            }
+          }
+
           if (profile) {
             setUser({
               uid: session.user.id,
               email: session.user.email || '',
-              role: profile.role || metaRole || 'buyer',
+              role: finalRole,
               createdAt: profile.created_at || new Date().toISOString(),
               isVerified: profile.is_verified || false,
             } as AppUser);
@@ -37,7 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setUser({
               uid: session.user.id,
               email: session.user.email || '',
-              role: metaRole || 'buyer',
+              role: finalRole,
               createdAt: new Date().toISOString(),
               isVerified: false,
             } as AppUser);
@@ -65,11 +85,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .single();
 
           const metaRole = session.user?.user_metadata?.role;
+          let finalRole = profile?.role || metaRole || 'buyer';
+          
+          if (metaRole === 'seller' && profile?.role !== 'seller') {
+            // Fix conflict: update profile role to seller since trigger defaulted to buyer
+            const { error: pErr } = await supabase.from('profiles').update({ role: 'seller' }).eq('id', session.user.id);
+            if (!pErr) finalRole = 'seller';
+            
+            const storeName = session.user?.user_metadata?.store_name;
+            if (storeName) {
+              const { data: store } = await supabase.from('stores').select('id').eq('id', session.user.id).single();
+              if (!store) {
+                await supabase.from('stores').insert([{
+                  id: session.user.id,
+                  name: storeName,
+                  description: session.user?.user_metadata?.store_description
+                }]);
+              }
+            }
+          }
+
           if (profile) {
             setUser({
               uid: session.user.id,
               email: session.user.email || '',
-              role: profile.role || metaRole || 'buyer',
+              role: finalRole,
               createdAt: profile.created_at || new Date().toISOString(),
               isVerified: profile.is_verified || false,
             } as AppUser);
@@ -77,7 +117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setUser({
               uid: session.user.id,
               email: session.user.email || '',
-              role: metaRole || 'buyer',
+              role: finalRole,
               createdAt: new Date().toISOString(),
               isVerified: false,
             } as AppUser);

@@ -39,7 +39,12 @@ export function BuyerDashboardPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-text-primary">Tableau de bord</h1>
-        <p className="text-text-secondary mt-1">Bienvenue dans votre espace personnel MERCAPLY.</p>
+        <div className="flex items-center gap-3 mt-1">
+          <p className="text-text-secondary">Bienvenue dans votre espace personnel MERCAPLY.</p>
+          <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-accent/10 text-accent border border-accent/20">
+            Rôle actuel : {user?.role || 'Inconnu'}
+          </div>
+        </div>
       </div>
 
       {/* Stats Grid */}

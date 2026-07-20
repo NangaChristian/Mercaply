@@ -1,102 +1,24 @@
-import { db, doc, getDoc, updateDoc, setDoc, addDoc, deleteDoc, collection, serverTimestamp } from '../../lib/supabase-compat';
-import React, { useState, useEffect } from 'react';
-import { Save, Bell, Shield, CreditCard, User, AlertCircle, ShieldCheck, Loader2 } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { useAuth } from '../../store/useAuth';
-import { MfaSetup } from '../../components/auth/MfaSetup';
-import { Button } from '../../components/ui/Button';
+const fs = require('fs');
+let content = fs.readFileSync('src/pages/seller/SellerSettingsPage.tsx', 'utf-8');
 
-export function SellerSettingsPage() {
-  const { user: user } = useAuth();
-  const [verification_status, setVerificationStatus] = useState<string>('unverified');
-  const [isSaving, setIsSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<'profile' | 'security'>('profile');
-  const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    cniNumber: '',
-    rcNumber: '',
-    returnPolicy: "Retours acceptés sous 7 jours si le produit n'a pas été ouvert.",
-    warrantyPolicy: "Garantie de 6 mois sur les défauts de fabrication."
-  });
+// Add import
+content = content.replace("import { useAuth } from '../../store/useAuth';", "import { useAuth } from '../../store/useAuth';\nimport { MfaSetup } from '../../components/auth/MfaSetup';");
 
-  useEffect(() => {
-    async function loadData() {
-      if (!user) return;
-      try {
-        const uDoc = await getDoc(doc(db, 'users', user.uid));
-        const sDoc = await getDoc(doc(db, 'stores', user.uid));
-        
-        const ud = uDoc.exists() ? uDoc.data() : {};
-        const sd = sDoc.exists() ? sDoc.data() : {};
-
-        if (ud.verification_status) setVerificationStatus(ud.verification_status);
-        
-        setFormData({
-          firstName: ud.firstName || '',
-          lastName: ud.lastName || '',
-          cniNumber: ud.cniNumber || '',
-          rcNumber: ud.rcNumber || '',
-          returnPolicy: sd.returnPolicy || "Retours acceptés sous 7 jours si le produit n'a pas été ouvert.",
-          warrantyPolicy: sd.warrantyPolicy || "Garantie de 6 mois sur les défauts de fabrication."
-        });
-      } catch (err) {
-        console.error("Error loading verification status:", err);
-      }
-    }
-    loadData();
-  }, [user]);
-
-  const handleSave = async () => {
-    if (!user) return;
-    setIsSaving(true);
-    try {
-      await setDoc(doc(db, 'users', user.uid), {
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        cniNumber: formData.cniNumber,
-        rcNumber: formData.rcNumber
-      }, { merge: true });
-
-      await setDoc(doc(db, 'stores', user.uid), {
-        returnPolicy: formData.returnPolicy,
-        warrantyPolicy: formData.warrantyPolicy
-      }, { merge: true });
-
-      alert('Paramètres sauvegardés avec succès');
-    } catch (error) {
-      console.error('Error saving:', error);
-      alert('Erreur lors de la sauvegarde');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  return (
-    <div className="space-y-6 pb-20">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h1 className="text-2xl font-bold text-text-primary">Paramètres de la boutique</h1>
-        <Button onClick={handleSave} variant="primary" isLoading={isSaving}>
-          <Save className="h-5 w-5 mr-2" /> Enregistrer
-        </Button>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                {/* Settings Navigation */}
+const tabsReplacement = `        {/* Settings Navigation */}
         <div className="md:col-span-1 space-y-1">
-          <button onClick={() => setActiveTab('profile')} className={`w-full flex items-center px-4 py-3 font-medium rounded-xl transition-colors ${activeTab === 'profile' ? 'bg-accent/10 text-accent' : 'text-text-secondary hover:bg-surface hover:text-text-primary'}`}>
+          <button onClick={() => setActiveTab('profile')} className={\`w-full flex items-center px-4 py-3 font-medium rounded-xl transition-colors \${activeTab === 'profile' ? 'bg-accent/10 text-accent' : 'text-text-secondary hover:bg-surface hover:text-text-primary'}\`}>
             <User className="h-5 w-5 mr-3" /> Profil vendeur
           </button>
-          <button onClick={() => setActiveTab('security')} className={`w-full flex items-center px-4 py-3 font-medium rounded-xl transition-colors ${activeTab === 'security' ? 'bg-accent/10 text-accent' : 'text-text-secondary hover:bg-surface hover:text-text-primary'}`}>
+          <button onClick={() => setActiveTab('security')} className={\`w-full flex items-center px-4 py-3 font-medium rounded-xl transition-colors \${activeTab === 'security' ? 'bg-accent/10 text-accent' : 'text-text-secondary hover:bg-surface hover:text-text-primary'}\`}>
             <Shield className="h-5 w-5 mr-3" /> Sécurité
           </button>
-        </div>
+        </div>`;
 
-        {/* Settings Content */}
+content = content.replace(/\{\/\* Settings Navigation \*\/\}([\s\S]+?)<\/div>/, tabsReplacement);
+content = content.replace("const [isSaving, setIsSaving] = useState(false);", "const [isSaving, setIsSaving] = useState(false);\n  const [activeTab, setActiveTab] = useState<'profile' | 'security'>('profile');");
+
+const rightColRegex = /\{\/\* Settings Content \*\/\}([\s\S]+?)<\/div>\s*<\/div>\s*<\/div>\s*\);\s*\}/;
+const newRightCol = `{/* Settings Content */}
         <div className="md:col-span-3 space-y-6">
           {activeTab === 'profile' ? (
             <>
@@ -226,4 +148,8 @@ export function SellerSettingsPage() {
       </div>
     </div>
   );
-}
+}`;
+
+content = content.replace(rightColRegex, newRightCol);
+
+fs.writeFileSync('src/pages/seller/SellerSettingsPage.tsx', content, 'utf-8');

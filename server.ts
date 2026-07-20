@@ -3,6 +3,8 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
+import adminRoutes from "./server/routes/admin.js";
+import paymentRoutes from "./server/routes/payments.js";
 
 dotenv.config();
 
@@ -33,6 +35,9 @@ async function startServer() {
   app.use(express.json());
 
   // API routes FIRST
+  app.use("/api/admin", adminRoutes);
+  app.use("/api/payments", paymentRoutes);
+  app.use("/api/fapshi", paymentRoutes);
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok", supabase: !!supabase });
   });

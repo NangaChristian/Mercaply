@@ -92,6 +92,8 @@ export function RegisterPage() {
             first_name: data.firstName,
             last_name: data.lastName,
             role: role,
+            store_name: role === 'seller' ? data.storeName : undefined,
+            store_description: role === 'seller' ? data.storeDescription : undefined,
           },
         },
       });
@@ -99,32 +101,9 @@ export function RegisterPage() {
       if (authError) throw authError;
       if (!authData.user) throw new Error('Erreur lors de la création de l\'utilisateur');
 
-      const userId = authData.user.id;
-
-      // 2. Update profile with role (the trigger should have created it)
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({
-          role: role,
-        })
-        .eq('id', userId);
-
-      if (profileError) throw profileError;
-
-      // 3. If seller, create store
-      if (role === 'seller') {
-        const { error: storeError } = await supabase
-          .from('stores')
-          .insert([
-            {
-              id: userId,
-              name: data.storeName,
-              description: data.storeDescription,
-            },
-          ]);
-
-        if (storeError) throw storeError;
-      }
+      // The profile and store will be synced in AuthProvider.tsx upon first login,
+      // because immediately after signUp the user session is null if email confirmation is enabled,
+      // which causes RLS errors for profile update and store insert.
 
       addToast('success', 'Compte créé avec succès. Vérifiez votre email.');
       navigate('/auth/login');

@@ -63,47 +63,49 @@ export function CheckoutPage() {
     
     setIsProcessing(true);
     try {
-      // Group items by sellerId if you want separate orders per seller, 
-      // but for simplicity, we mock a single order here linking to user.
       const sellerId = items[0]?.product?.sellerId || 'unknown_seller';
 
-      const orderItems = items.map((item: any) => ({
+      const orderItems = items.map((item) => ({
         productId: item.product.id,
         quantity: item.quantity,
         price: item.product.price,
+        title: item.product.title,
         variants: item.variants || {},
       }));
 
-      await addDoc(collection(db, 'orders'), {
-        userId: user.uid,
-        sellerId,
-        items: orderItems,
-        subtotal,
-        shippingFee,
-        total,
-        status: 'pending',
-        paymentMethod: paymentMethod === 'mtn' ? 'Mobile Money (MTN)' : paymentMethod === 'orange' ? 'Orange Money' : 'Virement Bancaire',
-        paymentPhone: phoneNumber,
-        shippingAddress: {
-          name: address.name,
-          details: address.street,
-          city: address.city,
-          region: address.region,
-          phone: address.phone,
+      const { supabase } = await import('../../lib/supabase');
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const res = await fetch('/api/payments/checkout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`
         },
-        customer: {
-          name: address.name,
-          email: user.email,
-        },
-        createdAt: new Date().toISOString(),
+        body: JSON.stringify({
+          userId: user.id,
+          sellerId,
+          amount: total,
+          items: orderItems,
+        })
       });
 
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Erreur lors de l\'initialisation du paiement');
+      }
+
+      const paymentData = await res.json();
       clearCart();
-      navigate('/checkout/success');
-    } catch (error) {
-      console.error('Error creating order', error);
-      alert('Une erreur est survenue lors de la création de la commande.');
-    } finally {
+
+      if (paymentData.link) {
+        window.location.href = paymentData.link;
+      } else {
+        navigate('/checkout/success?orderId=' + paymentData.orderId);
+      }
+    } catch (error: any) {
+      console.error('Error confirming order:', error);
+      alert('Une erreur est survenue: ' + error.message);
       setIsProcessing(false);
     }
   };

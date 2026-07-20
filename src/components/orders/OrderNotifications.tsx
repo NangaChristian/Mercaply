@@ -1,68 +1,54 @@
-// @ts-nocheck
-import React, { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { useAuth } from '../../store/useAuth';
 import { useToast } from '../../store/useToast';
+import { supabase } from '../../lib/supabase';
 
 export function OrderNotifications() {
-  const { firebaseUser: user } = useAuth();
+  const { user } = useAuth();
   const { addToast } = useToast();
-  const isFirstRun = useRef(true);
-  const previousStatusMap = useRef<Record<string, string>>({});
-  
+
   useEffect(() => {
-    if (!user) return;
-    
-    // Listen for buyer orders
-    const buyerQuery = query(collection(db, 'orders'), where('userId', '==', user.uid));
-    const unsubscribeBuyer = onSnapshot(buyerQuery, (snapshot) => {
-      if (isFirstRun.current) {
-        snapshot.docs.forEach(doc => {
-          previousStatusMap.current[doc.id] = doc.data().status;
-        });
-      } else {
-        snapshot.docChanges().forEach(change => {
-          const data = change.doc.data();
-          if (change.type === 'modified') {
-            const oldStatus = previousStatusMap.current[change.doc.id];
-            const newStatus = data.status;
-            if (oldStatus !== newStatus) {
-               addToast('info', `Le statut de votre commande #${change.doc.id.substring(0, 6)} est passé à : ${newStatus}`);
-            }
-          }
-          previousStatusMap.current[change.doc.id] = data.status;
-        });
-      }
-    }, (error) => { console.log('Listener cancelled (likely due to logout)'); });
+    if (!user?.uid || !supabase) return;
 
-    // Listen for seller orders
-    const sellerQuery = query(collection(db, 'orders'), where('sellerId', '==', user.uid));
-    const unsubscribeSeller = onSnapshot(sellerQuery, (snapshot) => {
-      if (isFirstRun.current) {
-        snapshot.docs.forEach(doc => {
-          previousStatusMap.current[doc.id] = doc.data().status;
-        });
-      } else {
-        snapshot.docChanges().forEach(change => {
-          const data = change.doc.data();
-          if (change.type === 'added') {
-            addToast('success', `Nouvelle commande reçue ! #${change.doc.id.substring(0, 6)}`);
+    // Supabase Realtime for orders
+    const channel = supabase
+      .channel('orders_channel')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'orders',
+          filter: `buyer_id=eq.${user.uid}`,
+        },
+        (payload) => {
+          const oldStatus = payload.old?.status;
+          const newStatus = payload.new?.status;
+          if (oldStatus !== newStatus && newStatus) {
+            addToast('info', `Le statut de votre commande #${payload.new.id.substring(0, 6)} est passé à : ${newStatus}`);
           }
-          previousStatusMap.current[change.doc.id] = data.status;
-        });
-      }
-    }, (error) => { console.log('Listener cancelled (likely due to logout)'); });
-
-    // Give a short delay before marking first run as complete to ignore initial loads
-    const timer = setTimeout(() => {
-      isFirstRun.current = false;
-    }, 1500);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'orders',
+          filter: `seller_id=eq.${user.uid}`,
+        },
+        (payload) => {
+          if (payload.new?.id) {
+            addToast('success', `Nouvelle commande reçue ! #${payload.new.id.substring(0, 6)}`);
+          }
+        }
+      )
+      .subscribe();
 
     return () => {
-      unsubscribeBuyer();
-      unsubscribeSeller();
-      clearTimeout(timer);
+      supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, [user?.uid, addToast]);
 
   return null;
 }

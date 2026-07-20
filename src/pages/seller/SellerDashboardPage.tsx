@@ -75,6 +75,16 @@ export function SellerDashboardPage() {
 
   return (
     <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-text-primary">Tableau de bord</h1>
+        <div className="flex items-center gap-3 mt-1">
+          <p className="text-text-secondary">Bienvenue sur votre espace vendeur Mercaply.</p>
+          <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-accent/10 text-accent border border-accent/20">
+            Rôle actuel : {user?.role || 'Inconnu'}
+          </div>
+        </div>
+      </div>
+      
       {verificationStatus !== 'verified' && (
         <div className="bg-warning/10 border border-warning/20 p-4 rounded-xl flex items-start sm:items-center justify-between flex-col sm:flex-row gap-4 mb-6">
           <div className="flex items-start">
