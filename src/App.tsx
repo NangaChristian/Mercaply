@@ -60,6 +60,7 @@ import { AdminReportsPage } from './pages/admin/AdminReportsPage';
 import { AdminSystemLogsPage } from './pages/admin/AdminSystemLogsPage';
 import { AdminContentPage } from './pages/admin/AdminContentPage';
 import { AdminCategoriesPage } from './pages/admin/AdminCategoriesPage';
+import { AdminKycPage } from './pages/admin/AdminKycPage';
 import { ProtectedAdminRoute } from './components/auth/ProtectedAdminRoute';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { AdminLayout } from './components/layout/AdminLayout';
@@ -113,6 +114,7 @@ export default function App() {
           }>
             <Route index element={<Navigate to="/admin/dashboard" replace />} />
             <Route path="dashboard" element={<AdminDashboardPage />} />
+            <Route path="kyc" element={<AdminKycPage />} />
             <Route path="users" element={<AdminUsersPage />} />
             <Route path="stores" element={<AdminStoresPage />} />
             <Route path="products" element={<AdminProductsPage />} />

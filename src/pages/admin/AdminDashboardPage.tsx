@@ -1,395 +1,371 @@
-// @ts-nocheck
-import { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { useAuth } from '../../store/useAuth';
 import { useUserRole } from '../../hooks/useUserRole';
-import { Card } from '../../components/ui/Card';
-import { AdminActionModal } from '../../components/admin/AdminActionModal';
-import { logAdminAction } from '../../utils/adminAudit';
-import { useToast } from '../../store/useToast';
 import { 
-  Users, 
-  Store, 
-  Package, 
-  ShoppingBag, 
-  DollarSign, 
-  TrendingUp,
-  Activity,
-  Plus,
-  Ban,
-  ShieldCheck,
-  Tag
+  Users, Store, Package, Briefcase, ShoppingBag, DollarSign, 
+  TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, 
+  Activity, ShieldCheck, AlertTriangle, FileText, Download, Wallet 
 } from 'lucide-react';
 import { 
-  LineChart, 
-  Line, 
-  AreaChart,
-  Area,
-  PieChart, 
-  Pie, 
-  Cell,
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  Legend, 
-  ResponsiveContainer 
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  BarChart, Bar, Legend, LineChart, Line
 } from 'recharts';
 
-interface AdminStats {
-  usersCount: number;
-  storesCount: number;
-  productsCount: number;
-  ordersCount: number;
-  totalRevenue: number;
-}
-
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
-
 export function AdminDashboardPage() {
-  const { user } = useAuth();
   const { isAdmin } = useUserRole();
-  const { addToast } = useToast();
+  const [loading, setLoading] = useState(true);
   
-  const [stats, setStats] = useState<AdminStats>({
-    usersCount: 0,
-    storesCount: 0,
-    productsCount: 0,
-    ordersCount: 0,
-    totalRevenue: 0,
+  // Real stats state
+  const [stats, setStats] = useState({
+    users: 0,
+    companies: 0,
+    products: 0,
+    services: 0,
+    orders: 0,
+    gmv: 0,
+    commission: 0,
+    pendingKyc: 0,
+    reports: 0
   });
-  const [isLoading, setIsLoading] = useState(true);
-  const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(false);
-  const [modalConfig, setModalConfig] = useState<any>(null);
 
-  const [salesData, setSalesData] = useState<any[]>([]);
-  const [userGrowthData, setUserGrowthData] = useState<any[]>([]);
-  const [categoryData, setCategoryData] = useState<any[]>([]);
-
+  // Fetch real basic stats
   useEffect(() => {
-    async function fetchStats() {
+    async function loadStats() {
+      if (!supabase) return;
       try {
-        const { count: usersCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
-        const { count: storesCount } = await supabase.from('stores').select('*', { count: 'exact', head: true });
-        const { count: productsCount } = await supabase.from('products').select('*', { count: 'exact', head: true });
-        const { count: ordersCount } = await supabase.from('orders').select('*', { count: 'exact', head: true });
-        
-        const { data: ordersData } = await supabase.from('orders').select('*');
-        const { data: usersData } = await supabase.from('profiles').select('*');
-        const { data: productsData } = await supabase.from('products').select('category');
+        const [
+          { count: usersCount },
+          { count: companiesCount },
+          { count: productsCount },
+          { count: servicesCount },
+          { count: ordersCount },
+          { count: kycCount },
+          { count: reportsCount }
+        ] = await Promise.all([
+          supabase.from('profiles').select('*', { count: 'exact', head: true }),
+          supabase.from('companies').select('*', { count: 'exact', head: true }),
+          supabase.from('products').select('*', { count: 'exact', head: true }),
+          supabase.from('services').select('*', { count: 'exact', head: true }),
+          supabase.from('orders').select('*', { count: 'exact', head: true }),
+          supabase.from('kyc_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
+          supabase.from('reports').select('*', { count: 'exact', head: true }).eq('status', 'pending')
+        ]);
 
-        let totalRevenue = 0;
-        const salesByMonth: Record<string, number> = {
-          'Jan': 0, 'Fév': 0, 'Mar': 0, 'Avr': 0, 'Mai': 0, 'Juin': 0, 'Juil': 0, 'Août': 0, 'Sep': 0, 'Oct': 0, 'Nov': 0, 'Déc': 0
-        };
-        const usersByMonth: Record<string, number> = {
-          'Jan': 0, 'Fév': 0, 'Mar': 0, 'Avr': 0, 'Mai': 0, 'Juin': 0, 'Juil': 0, 'Août': 0, 'Sep': 0, 'Oct': 0, 'Nov': 0, 'Déc': 0
-        };
-        const catCounts: Record<string, number> = {};
-
-        const months = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'];
-
-        (ordersData || []).forEach(data => {
-          if (data.status === 'delivered' || data.status === 'completed') {
-             totalRevenue += Number(data.total || data.total_amount || 0);
-          }
-          if (data.created_at || data.createdAt) {
-            const date = new Date(data.created_at || data.createdAt);
-            if (!isNaN(date.getTime())) {
-              const monthStr = months[date.getMonth()];
-              if (salesByMonth[monthStr] !== undefined) {
-                 salesByMonth[monthStr] += Number(data.total || data.total_amount || 0);
-              }
-            }
-          }
-        });
-
-        (usersData || []).forEach(data => {
-          if (data.created_at || data.createdAt) {
-            const date = new Date(data.created_at || data.createdAt);
-            if (!isNaN(date.getTime())) {
-              const monthStr = months[date.getMonth()];
-              if (usersByMonth[monthStr] !== undefined) {
-                 usersByMonth[monthStr] += 1;
-              }
-            }
-          }
-        });
-
-        (productsData || []).forEach(data => {
-          const cat = data.category || 'Non classé';
-          catCounts[cat] = (catCounts[cat] || 0) + 1;
-        });
+        const { data: ordersData } = await supabase
+          .from('orders')
+          .select('total_amount, status')
+          .in('status', ['delivered', 'completed', 'shipped', 'confirmed']);
+          
+        let gmv = 0;
+        if (ordersData) {
+          gmv = ordersData.reduce((acc, curr) => acc + Number(curr.total_amount), 0);
+        }
 
         setStats({
-          usersCount: usersCount || 0,
-          storesCount: storesCount || 0,
-          productsCount: productsCount || 0,
-          ordersCount: ordersCount || 0,
-          totalRevenue,
+          users: usersCount || 0,
+          companies: companiesCount || 0,
+          products: productsCount || 0,
+          services: servicesCount || 0,
+          orders: ordersCount || 0,
+          gmv: gmv,
+          commission: gmv * 0.05, // Approximation for now
+          pendingKyc: kycCount || 0,
+          reports: reportsCount || 0
         });
-
-        const newSalesData = months.map(m => ({ name: m, sales: salesByMonth[m] }));
-        setSalesData(newSalesData);
-        
-        let cumulativeUsers = 0;
-        const newUserGrowth = months.map(m => {
-           cumulativeUsers += usersByMonth[m];
-           return { name: m, users: cumulativeUsers };
-        });
-        setUserGrowthData(newUserGrowth);
-
-        const newCatData = Object.entries(catCounts).map(([name, value]) => ({ name, value })).sort((a,b) => b.value - a.value).slice(0, 5);
-        setCategoryData(newCatData);
-
-      } catch (error) {
-        console.error('Error fetching admin stats:', error);
+      } catch (err) {
+        console.error("Error loading enterprise stats:", err);
       } finally {
-        setIsLoading(false);
+        setLoading(false);
       }
     }
-
-    fetchStats();
-  }, []);
-
-
-  const handleAction = (action: string) => {
-    setIsQuickActionsOpen(false);
     
-    if (action === 'ban') {
-      setModalConfig({
-        isOpen: true,
-        title: 'Bannir un utilisateur',
-        description: 'Veuillez indiquer l\'ID de l\'utilisateur et la raison du bannissement. Cette action est irréversible.',
-        actionLabel: 'Bannir',
-        isDestructive: true,
-        onConfirm: (reason) => {
-          logAdminAction('ban_user', 'unknown', reason);
-          addToast('success', `L'utilisateur a été banni. Raison: ${reason}`);
-          setModalConfig(null);
-        }
-      });
-    } else if (action === 'verify') {
-      setModalConfig({
-        isOpen: true,
-        title: 'Vérifier une boutique',
-        description: 'Veuillez indiquer l\'ID de la boutique et ajouter une note pour la vérification.',
-        actionLabel: 'Vérifier',
-        isDestructive: false,
-        onConfirm: (reason) => {
-          logAdminAction('verify_store', 'unknown', reason);
-          addToast('success', `La boutique a été vérifiée. Note: ${reason}`);
-          setModalConfig(null);
-        }
-      });
-    } else if (action === 'promo') {
-      logAdminAction('create_promo', 'global');
-      addToast('info', 'La création de promotion globale sera bientôt disponible.');
+    if (isAdmin) {
+      loadStats();
     }
-  };
+  }, [isAdmin]);
 
-  const statCards = [
-    {
-      title: 'Utilisateurs Totaux',
-      value: stats.usersCount,
-      icon: Users,
-      color: 'text-blue-500',
-      bgColor: 'bg-blue-500/10',
-      trend: '+12% ce mois',
-      trendUp: true
-    },
-    {
-      title: 'Boutiques Actives',
-      value: stats.storesCount,
-      icon: Store,
-      color: 'text-purple-500',
-      bgColor: 'bg-purple-500/10',
-      trend: '+5% ce mois',
-      trendUp: true
-    },
-    {
-      title: 'Produits en Ligne',
-      value: stats.productsCount,
-      icon: Package,
-      color: 'text-orange-500',
-      bgColor: 'bg-orange-500/10',
-      trend: '+18% ce mois',
-      trendUp: true
-    },
-    {
-      title: 'Commandes',
-      value: stats.ordersCount,
-      icon: ShoppingBag,
-      color: 'text-accent',
-      bgColor: 'bg-accent/10',
-      trend: '+24% ce mois',
-      trendUp: true
-    },
-    {
-      title: 'Revenu Total',
-      value: `${stats.totalRevenue.toLocaleString()} CFA`,
-      icon: DollarSign,
-      color: 'text-emerald-500',
-      bgColor: 'bg-emerald-500/10',
-      trend: '+15% ce mois',
-      trendUp: true
-    }
+  // Mock data for charts (to be replaced by materialized views in production)
+  const gmvData = [
+    { name: 'Jan', gmv: 4000, commission: 200 },
+    { name: 'Fév', gmv: 3000, commission: 150 },
+    { name: 'Mar', gmv: 5000, commission: 250 },
+    { name: 'Avr', gmv: 8780, commission: 439 },
+    { name: 'Mai', gmv: 12000, commission: 600 },
+    { name: 'Juin', gmv: 15000, commission: 750 },
+    { name: 'Juil', gmv: 14500, commission: 725 },
+  ];
+
+  const conversionData = [
+    { name: 'Lun', conv: 2.4 },
+    { name: 'Mar', conv: 2.8 },
+    { name: 'Mer', conv: 3.2 },
+    { name: 'Jeu', conv: 3.8 },
+    { name: 'Ven', conv: 4.1 },
+    { name: 'Sam', conv: 4.5 },
+    { name: 'Dim', conv: 4.2 },
   ];
 
   if (!isAdmin) return null;
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-text-primary">Tableau de bord</h1>
-        <p className="text-text-secondary mt-1">Vue d'ensemble de l'activité de la plateforme.</p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-        {statCards.map((stat, index) => {
-          const Icon = stat.icon;
-          return (
-            <Card key={index} className="p-6">
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="text-text-secondary text-sm font-medium">{stat.title}</p>
-                  <h3 className="text-2xl font-bold text-text-primary mt-2">
-                    {isLoading ? '-' : stat.value}
-                  </h3>
-                </div>
-                <div className={`p-3 rounded-xl ${stat.bgColor}`}>
-                  <Icon className={`h-6 w-6 ${stat.color}`} />
-                </div>
-              </div>
-              <div className="mt-4 flex items-center gap-2">
-                <TrendingUp className={`h-4 w-4 ${stat.trendUp ? 'text-emerald-500' : 'text-error'}`} />
-                <span className={`text-sm font-medium ${stat.trendUp ? 'text-emerald-500' : 'text-error'}`}>
-                  {stat.trend}
-                </span>
-              </div>
-            </Card>
-          );
-        })}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <Card className="p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="font-bold text-text-primary">Volume des ventes (Mensuel)</h3>
-          </div>
-          <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={salesData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#6B7280' }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#6B7280' }} />
-                <Tooltip 
-                  contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                />
-                <Area type="monotone" dataKey="sales" stroke="#2563EB" fill="#3B82F6" fillOpacity={0.2} />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-
-        <Card className="p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="font-bold text-text-primary">Croissance des utilisateurs</h3>
-          </div>
-          <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={userGrowthData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#6B7280' }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#6B7280' }} />
-                <Tooltip 
-                  contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                />
-                <Line type="monotone" dataKey="users" stroke="#10B981" strokeWidth={3} dot={{ r: 4, fill: '#10B981', strokeWidth: 2 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-      </div>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <Card className="p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="font-bold text-text-primary">Catégories les plus performantes</h3>
-          </div>
-          <div className="h-72 flex justify-center">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={categoryData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                  outerRadius={100}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {categoryData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-      </div>
-
-      {/* Floating Quick Actions Menu */}
-      <div className="fixed bottom-8 right-8 z-40">
-        <div className="relative">
-          {isQuickActionsOpen && (
-            <div className="absolute bottom-16 right-0 mb-2 w-48 bg-surface rounded-xl shadow-lg border border-border-light overflow-hidden animate-in slide-in-from-bottom-2 fade-in duration-200">
-              <button 
-                onClick={() => handleAction('promo')}
-                className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-text-primary hover:bg-surface-hover transition-colors text-left"
-              >
-                <Tag className="h-4 w-4 text-accent" />
-                Nouvelle Promo
-              </button>
-              <button 
-                onClick={() => handleAction('verify')}
-                className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-text-primary hover:bg-surface-hover transition-colors text-left"
-              >
-                <ShieldCheck className="h-4 w-4 text-emerald-500" />
-                Vérifier Boutique
-              </button>
-              <button 
-                onClick={() => handleAction('ban')}
-                className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-danger hover:bg-danger/10 transition-colors text-left border-t border-border-light"
-              >
-                <Ban className="h-4 w-4" />
-                Bannir Utilisateur
-              </button>
-            </div>
-          )}
-          <button
-            onClick={() => setIsQuickActionsOpen(!isQuickActionsOpen)}
-            className="flex items-center justify-center w-14 h-14 bg-black text-white rounded-full shadow-lg hover:bg-black/90 hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2"
-          >
-            <Plus className={`h-6 w-6 transition-transform duration-200 ${isQuickActionsOpen ? 'rotate-45' : ''}`} />
+    <div className="p-6 md:p-8 max-w-[1600px] mx-auto space-y-8">
+      {/* Header & Actions */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Executive Dashboard</h1>
+          <p className="text-slate-500 mt-1">Plateforme Enterprise V2 • Performance globale & KPIs</p>
+        </div>
+        <div className="flex gap-3">
+          <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg shadow-sm hover:bg-slate-50 transition-colors font-medium text-sm">
+            <FileText className="w-4 h-4" />
+            Générer Rapport
+          </button>
+          <button className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg shadow-sm hover:bg-accent-hover transition-colors font-medium text-sm">
+            <Download className="w-4 h-4" />
+            Export Financier CSV
           </button>
         </div>
       </div>
 
-      {modalConfig && (
-        <AdminActionModal
-          isOpen={modalConfig.isOpen}
-          onClose={() => setModalConfig(null)}
-          onConfirm={modalConfig.onConfirm}
-          title={modalConfig.title}
-          description={modalConfig.description}
-          actionLabel={modalConfig.actionLabel}
-          isDestructive={modalConfig.isDestructive}
-        />
+      {/* Actionable Alerts (KYC, Reports) */}
+      {(stats.pendingKyc > 0 || stats.reports > 0) && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {stats.pendingKyc > 0 && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="p-2 bg-amber-100 rounded-lg">
+                  <ShieldCheck className="w-6 h-6 text-amber-600" />
+                </div>
+                <div>
+                  <h4 className="font-semibold text-amber-900">Validations KYC en attente</h4>
+                  <p className="text-sm text-amber-700">{stats.pendingKyc} entreprises attendent votre validation.</p>
+                </div>
+              </div>
+              <button className="px-4 py-2 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700">Examiner</button>
+            </div>
+          )}
+          {stats.reports > 0 && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="p-2 bg-red-100 rounded-lg">
+                  <AlertTriangle className="w-6 h-6 text-red-600" />
+                </div>
+                <div>
+                  <h4 className="font-semibold text-red-900">Signalements à traiter</h4>
+                  <p className="text-sm text-red-700">{stats.reports} signalements requièrent une modération.</p>
+                </div>
+              </div>
+              <button className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700">Modérer</button>
+            </div>
+          )}
+        </div>
       )}
+
+      {/* Top Level KPIs (Tier 1) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform duration-500">
+            <DollarSign className="w-24 h-24" />
+          </div>
+          <div className="relative z-10">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">GMV (Volume Brut)</p>
+              <div className="flex items-center gap-1 text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md text-xs font-bold">
+                <ArrowUpRight className="w-3 h-3" /> +24.5%
+              </div>
+            </div>
+            <h3 className="text-3xl font-bold text-slate-900">{loading ? '-' : stats.gmv.toLocaleString()} CFA</h3>
+            <p className="text-sm text-slate-500 mt-2">Vs. période précédente</p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform duration-500">
+            <Activity className="w-24 h-24 text-accent" />
+          </div>
+          <div className="relative z-10">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Commissions Net</p>
+              <div className="flex items-center gap-1 text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md text-xs font-bold">
+                <ArrowUpRight className="w-3 h-3" /> +18.2%
+              </div>
+            </div>
+            <h3 className="text-3xl font-bold text-slate-900">{loading ? '-' : stats.commission.toLocaleString()} CFA</h3>
+            <p className="text-sm text-slate-500 mt-2">Moyenne 5% appliquée</p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform duration-500">
+            <ShoppingBag className="w-24 h-24 text-indigo-600" />
+          </div>
+          <div className="relative z-10">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Commandes B2B/B2C</p>
+              <div className="flex items-center gap-1 text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md text-xs font-bold">
+                <ArrowUpRight className="w-3 h-3" /> +12.4%
+              </div>
+            </div>
+            <h3 className="text-3xl font-bold text-slate-900">{loading ? '-' : stats.orders.toLocaleString()}</h3>
+            <p className="text-sm text-slate-500 mt-2">Transactions terminées</p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform duration-500">
+            <Users className="w-24 h-24 text-purple-600" />
+          </div>
+          <div className="relative z-10">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Utilisateurs</p>
+              <div className="flex items-center gap-1 text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md text-xs font-bold">
+                <ArrowUpRight className="w-3 h-3" /> +8.1%
+              </div>
+            </div>
+            <h3 className="text-3xl font-bold text-slate-900">{loading ? '-' : stats.users.toLocaleString()}</h3>
+            <p className="text-sm text-slate-500 mt-2">Comptes acheteurs actifs</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Secondary KPIs (Tier 2) */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        {[
+          { label: 'Entreprises Vérifiées', value: stats.companies, icon: Store, color: 'text-indigo-600' },
+          { label: 'Produits Actifs', value: stats.products, icon: Package, color: 'text-orange-600' },
+          { label: 'Services B2B', value: stats.services, icon: Briefcase, color: 'text-teal-600' },
+          { label: 'Taux de Conversion', value: '4.2%', icon: TrendingUp, color: 'text-emerald-600' },
+          { label: 'Temps Rép. Moyen', value: '1.4h', icon: Activity, color: 'text-accent' },
+        ].map((item, i) => (
+          <div key={i} className="bg-white border border-slate-200 rounded-xl p-4 flex items-center gap-4 shadow-sm">
+            <div className={`p-3 rounded-lg bg-slate-50 ${item.color}`}>
+              <item.icon className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-slate-500">{item.label}</p>
+              <p className="text-lg font-bold text-slate-900">{loading ? '-' : item.value}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Main GMV Chart */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm lg:col-span-2">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h3 className="text-lg font-bold text-slate-900">Croissance GMV & Commissions</h3>
+              <p className="text-sm text-slate-500">Volume brut vs Revenu net généré (Millions CFA)</p>
+            </div>
+            <select className="bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg px-3 py-2 outline-none">
+              <option>7 Derniers Mois</option>
+              <option>Cette Année</option>
+              <option>Année Précédente</option>
+            </select>
+          </div>
+          <div className="h-[350px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={gmvData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="colorGmv" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#2563EB" stopOpacity={0.2}/>
+                    <stop offset="95%" stopColor="#2563EB" stopOpacity={0}/>
+                  </linearGradient>
+                  <linearGradient id="colorCommission" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10B981" stopOpacity={0.2}/>
+                    <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748B', fontSize: 12 }} dy={10} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748B', fontSize: 12 }} />
+                <Tooltip 
+                  contentStyle={{ borderRadius: '12px', border: '1px solid #E2E8F0', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                  itemStyle={{ fontWeight: 600 }}
+                />
+                <Area type="monotone" dataKey="gmv" name="Volume Brut" stroke="#2563EB" strokeWidth={3} fillOpacity={1} fill="url(#colorGmv)" />
+                <Area type="monotone" dataKey="commission" name="Commissions" stroke="#10B981" strokeWidth={3} fillOpacity={1} fill="url(#colorCommission)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Conversion Chart */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h3 className="text-lg font-bold text-slate-900">Taux de Conversion</h3>
+              <p className="text-sm text-slate-500">Tendances de la semaine</p>
+            </div>
+          </div>
+          <div className="h-[350px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={conversionData} margin={{ top: 10, right: 10, left: -30, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748B', fontSize: 12 }} dy={10} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748B', fontSize: 12 }} />
+                <Tooltip 
+                  contentStyle={{ borderRadius: '12px', border: '1px solid #E2E8F0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                />
+                <Line type="monotone" dataKey="conv" name="Conversion (%)" stroke="#8B5CF6" strokeWidth={4} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+      
+      {/* Real-time Activity / Live Feed (Static Mock for visual impact) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+          <h3 className="text-lg font-bold text-slate-900 mb-6">Transactions Récentes</h3>
+          <div className="space-y-4">
+            {[1, 2, 3, 4, 5].map((_, i) => (
+              <div key={i} className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center">
+                    <ShoppingBag className="w-5 h-5 text-slate-600" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-slate-900 text-sm">Commande #ORD-{1000 + i*43}</p>
+                    <p className="text-xs text-slate-500">Il y a {i*2 + 1} minutes</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="font-bold text-slate-900">{(15000 * (i+1)).toLocaleString()} CFA</p>
+                  <p className="text-xs text-emerald-600 font-medium">Payé (Stripe)</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+          <h3 className="text-lg font-bold text-slate-900 mb-6">Demandes de Retrait (Payouts)</h3>
+          <div className="space-y-4">
+            {[1, 2, 3].map((_, i) => (
+              <div key={i} className="flex items-center justify-between p-3 border border-slate-100 rounded-lg">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center">
+                    <Wallet className="w-5 h-5 text-orange-600" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-slate-900 text-sm">Entreprise Vendeur {['A', 'B', 'C'][i]}</p>
+                    <p className="text-xs text-slate-500">Orange Money</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <p className="font-bold text-slate-900">{(500000 * (i+1)).toLocaleString()} CFA</p>
+                  <button className="px-3 py-1.5 bg-slate-900 text-white text-xs font-medium rounded-md hover:bg-slate-800">Valider</button>
+                </div>
+              </div>
+            ))}
+            <button className="w-full py-3 mt-2 text-sm font-medium text-accent hover:text-blue-700 bg-blue-50 rounded-lg">
+              Voir toutes les demandes (12)
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,49 +1,87 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --color-primary: #000000;
-  --color-primary: #FF5C5C;
-  --color-secondary: #555555;
-  --color-accent: #FF5C5C;
-  --color-accent-hover: #E54B4B;
-  --color-background: #FFF9F9;
+  /* Original Mercaply Graphic Charter */
+  --color-primary: #FF5A5F;
+  --color-primary-hover: #E04B50;
+  --color-primary-foreground: #FFFFFF;
+  
+  --color-secondary: #F3F4F6;
+  --color-secondary-foreground: #1F2937;
+  
+  --color-accent: #FF5A5F;
+  --color-accent-light: #FF8A8E;
+  --color-accent-hover: #E04B50;
+  --color-accent-foreground: #FFFFFF;
+  
+  --color-background: #FFFFFF; /* Setting main bg to white to fix cards, wrapper uses surface-2 */
   --color-surface: #FFFFFF;
-  --color-surface-2: #F3F4F6;
-  --color-border: #F3F4F6;
-  --color-border-light: #F9FAFB;
+  --color-surface-2: #F8F9FA;
+  --color-surface-hover: #F3F4F6;
+  --color-surface-muted: #F9FAFB;
+  
+  --color-border: #E5E7EB;
+  --color-border-light: #F3F4F6;
+  --color-border-hover: #D1D5DB;
+  
   --color-success: #10B981;
-  --color-danger: #FF5C5C;
-  --color-warning: #F59E0B;
+  --color-danger: #EF4444;
+  --color-warning: #F5A623;
+  --color-warning-dark: #B45309;
+  
   --color-text-primary: #111827;
   --color-text-secondary: #6B7280;
   --color-text-tertiary: #9CA3AF;
-
-  --font-sans: "Outfit", sans-serif;
-
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 24px;
-  --radius-2xl: 32px;
-  --radius-3xl: 40px;
-
+  
+  --font-sans: "Inter", sans-serif;
+  --font-serif: "Playfair Display", serif;
+  
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 24px;
+  --radius-full: 9999px;
+  
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.05), 0 4px 6px -4px rgb(0 0 0 / 0.05);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.05), 0 8px 10px -6px rgb(0 0 0 / 0.05);
 }
 
 @layer base {
   body {
-    @apply bg-background text-text-primary font-sans antialiased;
+    @apply bg-surface-2 text-text-primary font-sans antialiased selection:bg-accent selection:text-white;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply tracking-tight;
   }
 }
-
 
 /* Hide Google Translate top banner */
 .goog-te-banner-frame.skiptranslate {
     display: none !important;
 }
+
 body {
     top: 0px !important;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #E5E7EB;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #D1D5DB;
 }

@@ -20,7 +20,7 @@ export function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
     );
   }
 
-  if (!supabaseUser || !user) {
+  if (!user) {
     return <Navigate to="/auth/login" state={{ from: location }} replace />;
   }
 

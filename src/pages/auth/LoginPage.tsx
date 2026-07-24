@@ -6,6 +6,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useToast } from '../../store/useToast';
+import { useAuth } from '../../store/useAuth';
+import { useEffect } from 'react';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
@@ -31,6 +33,15 @@ export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { addToast } = useToast();
+  const { user, isLoading: authLoading } = useAuth();
+  
+  useEffect(() => {
+    if (user && !authLoading) {
+      const defaultFrom = user.role === 'admin' ? '/admin/dashboard' : user.role === 'seller' ? '/seller/dashboard' : '/buyer/dashboard';
+      const from = location.state?.from?.pathname || defaultFrom;
+      navigate(from, { replace: true });
+    }
+  }, [user, authLoading, navigate, location.state]);
 
   const from = location.state?.from?.pathname || '/';
 
@@ -73,7 +84,7 @@ export function LoginPage() {
       }
 
       addToast('success', 'Connexion réussie');
-      navigate(from, { replace: true });
+      // Navigation will be handled by useEffect when user is populated in store
     } catch (error: any) {
       console.error('Login error:', error);
       
@@ -130,7 +141,7 @@ export function LoginPage() {
       if (verifyResponse.error) throw verifyResponse.error;
       
       addToast('success', 'Connexion réussie');
-      navigate(from, { replace: true });
+      // Navigation will be handled by useEffect when user is populated in store
     } catch (error: any) {
       addToast('error', error.message || 'Code MFA invalide');
     } finally {

@@ -6,6 +6,7 @@ import dotenv from "dotenv";
 import adminRoutes from "./server/routes/admin.js";
 import paymentRoutes from "./server/routes/payments.js";
 import orderRoutes from "./server/routes/orders.js";
+import { apiV1Router } from "./src/backend/app.js";
 
 dotenv.config();
 
@@ -36,6 +37,9 @@ async function startServer() {
   app.use(express.json());
 
   // API routes FIRST
+  app.use("/api/v1", apiV1Router); // Nouvelle Architecture Clean
+  
+  // Anciennes routes (Legacy)
   app.use("/api/admin", adminRoutes);
   app.use("/api/payments", paymentRoutes);
   app.use("/api/fapshi", paymentRoutes);
